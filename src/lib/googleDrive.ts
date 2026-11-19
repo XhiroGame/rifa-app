@@ -42,9 +42,11 @@ function getGoogleDriveClient() {
 }
 
 /**
- * Sube una imagen de comprobante a la carpeta configurada en Google Drive.
- * Si las credenciales de Drive no están completas, almacena localmente en public/uploads/
- * para garantizar funcionamiento sin interrupciones.
+ * Sube una imagen de comprobante a la nube.
+ * 1. Primero intenta en Vercel Blob (almacenamiento en la nube de producción).
+ * 2. Si Google Drive está configurado, intenta en Google Drive.
+ * 3. En entorno local, guarda en public/uploads/comprobantes.
+ * En ambiente serverless sin disco persistente, maneja el error de forma segura.
  */
 export async function uploadReceiptToGoogleDrive(
   buffer: Buffer,
@@ -56,7 +58,28 @@ export async function uploadReceiptToGoogleDrive(
   const safeNums = boletas.slice(0, 3).join('-');
   const fileName = `comprobante-${safeNums}-${Date.now()}.${ext}`;
 
-  // Si Google Drive está completamente configurado
+  // 1. Vercel Blob Storage (Producción en Vercel)
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const { put } = await import('@vercel/blob');
+      const blob = await put(`comprobantes/${fileName}`, buffer, {
+        access: 'public',
+        contentType: mimeType,
+      });
+
+      return {
+        fileId: blob.url,
+        webViewLink: blob.url,
+        webContentLink: blob.downloadUrl || blob.url,
+        isDrive: false,
+        fileName,
+      };
+    } catch (blobErr) {
+      console.error('Error al subir a Vercel Blob Storage:', blobErr);
+    }
+  }
+
+  // 2. Si Google Drive está completamente configurado
   if (isGoogleDriveConfigured()) {
     try {
       const drive = getGoogleDriveClient();
@@ -109,18 +132,30 @@ export async function uploadReceiptToGoogleDrive(
     }
   }
 
-  // Fallback: Guardar en public/uploads/comprobantes
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'comprobantes');
-  await fs.mkdir(uploadsDir, { recursive: true });
-  const filePath = path.join(uploadsDir, fileName);
-  await fs.writeFile(filePath, buffer);
+  // 3. Fallback: Guardar en disco local (solo entorno de desarrollo local)
+  try {
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'comprobantes');
+    await fs.mkdir(uploadsDir, { recursive: true });
+    const filePath = path.join(uploadsDir, fileName);
+    await fs.writeFile(filePath, buffer);
 
-  const localUrl = `/uploads/comprobantes/${fileName}`;
-  return {
-    fileId: `local-${Date.now()}`,
-    webViewLink: localUrl,
-    isDrive: false,
-    fileName,
-  };
+    const localUrl = `/uploads/comprobantes/${fileName}`;
+    return {
+      fileId: `local-${Date.now()}`,
+      webViewLink: localUrl,
+      isDrive: false,
+      fileName,
+    };
+  } catch (fsErr) {
+    console.warn('No se pudo guardar archivo en filesystem local (ambiente serverless):', fsErr);
+    const base64Data = `data:${mimeType};base64,${buffer.toString('base64')}`;
+    const safeUrl = base64Data.length < 45000 ? base64Data : '';
+    return {
+      fileId: `mem-${Date.now()}`,
+      webViewLink: safeUrl,
+      isDrive: false,
+      fileName,
+    };
+  }
 }
 
