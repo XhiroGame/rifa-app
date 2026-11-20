@@ -65,12 +65,17 @@ export async function uploadReceiptToGoogleDrive(
       const blob = await put(`comprobantes/${fileName}`, buffer, {
         access: 'public',
         contentType: mimeType,
+        addRandomSuffix: false,
       });
+
+      const appBaseUrl =
+        process.env.NEXT_PUBLIC_APP_URL || 'https://rifa-app-lyart.vercel.app';
+      const cleanProxyUrl = `${appBaseUrl.replace(/\/$/, '')}/api/comprobante/${fileName}`;
 
       return {
         fileId: blob.url,
-        webViewLink: blob.url,
-        webContentLink: blob.downloadUrl || blob.url,
+        webViewLink: cleanProxyUrl,
+        webContentLink: blob.downloadUrl || cleanProxyUrl,
         isDrive: false,
         fileName,
       };

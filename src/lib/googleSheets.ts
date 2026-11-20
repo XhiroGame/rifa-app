@@ -353,7 +353,13 @@ export async function payCuotaInGoogleSheets(
       },
     });
 
-    // 3. Guardar referencia, drive link, notas y clave única (Columnas S, T, U, V)
+    // 3. Limpiar hipervínculo anterior en columna T para que Google Sheets no deje pegado el link de la cuota previa
+    await sheets.spreadsheets.values.clear({
+      spreadsheetId: SHEET_ID,
+      range: `'${SHEET_TAB_NAME}'!T${rowIndex}`,
+    });
+
+    // 4. Guardar referencia, drive link, notas y clave única (Columnas S, T, U, V)
     await sheets.spreadsheets.values.update({
       spreadsheetId: SHEET_ID,
       range: `'${SHEET_TAB_NAME}'!S${rowIndex}:V${rowIndex}`,
