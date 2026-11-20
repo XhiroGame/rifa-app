@@ -93,16 +93,15 @@ export async function getTickets(): Promise<{
       const nombre = row[2]?.toString().trim() || undefined;
       const telefono = row[3]?.toString().trim() || undefined;
       const cuotasPagadasParsed = parseInt(row[4]?.toString() || '0', 10);
-      const cuotasPagadas = isNaN(cuotasPagadasParsed) ? 0 : cuotasPagadasParsed;
-      const totalAbonado = cuotasPagadas * CUOTA_PRECIO;
-      const estado = normalizeGeneralStatus(row[1]?.toString(), cuotasPagadas);
+      const cuotasPagadasCol = isNaN(cuotasPagadasParsed) ? 0 : cuotasPagadasParsed;
 
       // Cuotas individuales (Columnas G a R: índice 6 a 17)
+      // Priorizar 'En revisión' sobre cuotasPagadas para que la 2da+ cuota en revisión nunca quede oculta
       const cuotas: Cuota[] = MESES_NOMBRES.map((nombreMes, idx) => {
         const colVal = (row[6 + idx]?.toString() || '').trim().toLowerCase();
         let cEstado: CuotaStatus = 'Pendiente';
-        if (colVal.includes('pagad') || idx + 1 <= cuotasPagadas) cEstado = 'Pagado';
-        else if (colVal.includes('revis') || colVal.includes('comprob')) cEstado = 'En revisión';
+        if (colVal.includes('revis') || colVal.includes('comprob')) cEstado = 'En revisión';
+        else if (colVal.includes('pagad') || idx + 1 <= cuotasPagadasCol) cEstado = 'Pagado';
 
         return {
           mes: idx + 1,
@@ -112,8 +111,14 @@ export async function getTickets(): Promise<{
         };
       });
 
+      const pagadasPorColumnas = cuotas.filter((c) => c.estado === 'Pagado').length;
+      const cuotasPagadas = Math.max(cuotasPagadasCol, pagadasPorColumnas);
+      const totalAbonado = cuotasPagadas * CUOTA_PRECIO;
       const cuotaEnRevIdx = cuotas.findIndex((c) => c.estado === 'En revisión');
       const cuotaEnRevision = cuotaEnRevIdx >= 0 ? cuotaEnRevIdx + 1 : undefined;
+      const estado = cuotaEnRevision
+        ? 'En revisión'
+        : normalizeGeneralStatus(row[1]?.toString(), cuotasPagadas);
 
       const referencia = row[18]?.toString().trim() || undefined;
       const comprobanteUrl = row[19]?.toString().trim() || undefined;
@@ -425,6 +430,21 @@ export async function setCuotaAdminAction(
         valueInputOption: 'USER_ENTERED',
         requestBody: {
           values: [[nuevoEstado, row[2] || '', row[3] || '', cuotasPagadas, totalAbonado]],
+        },
+      });
+
+      // Actualizar columna Notas (U) para reflejar que la cuota ya fue aprobada
+      const notaActual = (row[20] || '').toString();
+      const notaAprobada = notaActual.includes('En revisión')
+        ? notaActual.replace(/En revisión/gi, 'Aprobada')
+        : `Cuota ${mes} (${MESES_NOMBRES[mes - 1]}): Aprobada`;
+
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: SHEET_ID,
+        range: `'${SHEET_TAB_NAME}'!U${rowIndex}`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: {
+          values: [[notaAprobada]],
         },
       });
 

@@ -621,18 +621,38 @@ export default function AdminPage() {
                       </div>
                     )}
 
-                    {/* Si está en mora: indicador claro de que aún no ha subido el comprobante */}
+                    {/* Si está en mora: indicador claro y acceso al último comprobante subido si existe */}
                     {ticket.estado === 'En mora' && (
-                      <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-2.5 space-y-1 text-xs">
+                      <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-2.5 space-y-1.5 text-xs">
                         <div className="flex justify-between items-center text-amber-300 font-bold">
-                          <span>Comprobante pendiente:</span>
+                          <span>Comprobante del mes actual:</span>
                           <span className="bg-amber-500/20 px-2 py-0.5 rounded text-[10px] text-amber-200 font-mono">
-                            Falta comprobante
+                            Pendiente
                           </span>
                         </div>
                         <p className="text-[11px] text-slate-400">
-                          El participante tiene cuotas atrasadas y aún debe adjuntar el comprobante de este mes.
+                          Tiene {ticket.cuotasPagadas} cuota(s) pagada(s) y debe ponerse al día con los meses siguientes.
                         </p>
+                        {ticket.comprobanteUrl && ticket.comprobanteUrl.startsWith('http') && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewTicket({
+                                ticket,
+                                mes: Math.max(1, ticket.cuotasPagadas || 1),
+                              })
+                            }
+                            className="w-full mt-1 flex items-center justify-between rounded-xl bg-slate-800/90 hover:bg-slate-700/80 p-2 text-xs text-slate-200 border border-slate-700 cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5 font-medium">
+                              <FileImage className="h-3.5 w-3.5 text-emerald-400" />
+                              <span>Ver último comprobante (Cuota {Math.max(1, ticket.cuotasPagadas || 1)})</span>
+                            </span>
+                            <span className="text-[11px] text-indigo-400 font-semibold underline">
+                              Abrir imagen
+                            </span>
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -740,6 +760,26 @@ export default function AdminPage() {
                         <div className="text-center text-xs text-teal-400 font-medium py-0.5">
                           ✓ Al día ({ticket.cuotasPagadas}/12 mensualidades)
                         </div>
+                        {ticket.comprobanteUrl && ticket.comprobanteUrl.startsWith('http') && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPreviewTicket({
+                                ticket,
+                                mes: Math.max(1, ticket.cuotasPagadas || 1),
+                              })
+                            }
+                            className="w-full flex items-center justify-between rounded-xl bg-slate-800 hover:bg-slate-700/80 p-2 text-xs text-slate-200 border border-slate-700 cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5 font-medium">
+                              <FileImage className="h-3.5 w-3.5 text-emerald-400" />
+                              <span>Ver último comprobante (Cuota {Math.max(1, ticket.cuotasPagadas || 1)})</span>
+                            </span>
+                            <span className="text-[11px] text-indigo-400 font-semibold underline">
+                              Abrir imagen
+                            </span>
+                          </button>
+                        )}
                         {ticket.telefono && (
                           <button
                             type="button"
@@ -786,22 +826,26 @@ export default function AdminPage() {
               <>
                 <button
                   type="button"
+                  disabled={actionLoading === `${previewTicket.ticket.numero}-${previewTicket.mes}`}
                   onClick={() =>
                     handleCuotaAction(previewTicket.ticket.numero, previewTicket.mes, 'reject')
                   }
-                  className="rounded-xl bg-rose-600 hover:bg-rose-500 px-4 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer"
+                  className="rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 px-4 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer"
                 >
                   Rechazar Cuota
                 </button>
 
                 <button
                   type="button"
+                  disabled={actionLoading === `${previewTicket.ticket.numero}-${previewTicket.mes}`}
                   onClick={() =>
                     handleCuotaAction(previewTicket.ticket.numero, previewTicket.mes, 'approve')
                   }
-                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-lg shadow-emerald-600/20"
+                  className="rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 px-5 py-2.5 text-xs font-bold text-white transition-colors cursor-pointer shadow-lg shadow-emerald-600/20"
                 >
-                  Aprobar Cuota ($100.000 COP)
+                  {actionLoading === `${previewTicket.ticket.numero}-${previewTicket.mes}`
+                    ? 'Procesando...'
+                    : 'Aprobar Cuota ($100.000 COP)'}
                 </button>
               </>
             ) : (

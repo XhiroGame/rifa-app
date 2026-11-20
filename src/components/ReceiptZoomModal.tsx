@@ -49,8 +49,11 @@ export const ReceiptZoomModal: React.FC<ReceiptZoomModalProps> = ({
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [rotation, setRotation] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isImgLoading, setIsImgLoading] = useState<boolean>(true);
+  const [imgError, setImgError] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const dragStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const touchDistanceRef = useRef<number | null>(null);
   const touchStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -62,6 +65,13 @@ export const ReceiptZoomModal: React.FC<ReceiptZoomModalProps> = ({
       setPosition({ x: 0, y: 0 });
       setRotation(0);
       setIsDragging(false);
+      setImgError(false);
+      // Si la imagen ya está en caché del navegador o es un blob local, no bloquear con spinner
+      if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+        setIsImgLoading(false);
+      } else {
+        setIsImgLoading(true);
+      }
     }
   }, [isOpen, imageUrl]);
 
@@ -220,7 +230,12 @@ export const ReceiptZoomModal: React.FC<ReceiptZoomModalProps> = ({
   const percentage = Math.round(scale * 100);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6 bg-slate-950/90 backdrop-blur-md animate-in fade-in duration-200"
+    >
       <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl bg-slate-900 border border-slate-700/80 shadow-2xl text-slate-100 overflow-hidden">
         
         {/* Header con información de la boleta y botón de cierre */}
@@ -315,23 +330,50 @@ export const ReceiptZoomModal: React.FC<ReceiptZoomModalProps> = ({
             }}
           />
 
-          {imageUrl ? (
-            <div
-              className="transition-transform duration-75 ease-out will-change-transform flex items-center justify-center"
-              style={{
-                transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
-              }}
-            >
-              <img
-                src={imageUrl}
-                alt="Comprobante de pago"
-                draggable={false}
-                className="max-h-[55vh] max-w-full w-auto object-contain rounded-lg shadow-2xl pointer-events-none"
-              />
-            </div>
+          {imageUrl && !imgError ? (
+            <>
+              {isImgLoading && (
+                <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-950/60 gap-2">
+                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
+                  <span className="text-xs text-slate-300">Cargando comprobante...</span>
+                </div>
+              )}
+              <div
+                className="transition-transform duration-75 ease-out will-change-transform flex items-center justify-center"
+                style={{
+                  transform: `translate(${position.x}px, ${position.y}px) scale(${scale}) rotate(${rotation}deg)`,
+                }}
+              >
+                <img
+                  ref={imgRef}
+                  src={imageUrl}
+                  alt="Comprobante de pago"
+                  draggable={false}
+                  onLoad={() => setIsImgLoading(false)}
+                  onError={() => {
+                    setIsImgLoading(false);
+                    setImgError(true);
+                  }}
+                  className="max-h-[55vh] max-w-full w-auto object-contain rounded-lg shadow-2xl pointer-events-none"
+                />
+              </div>
+            </>
           ) : (
-            <div className="text-center p-8 text-slate-500 text-sm">
-              Sin imagen de comprobante disponible
+            <div className="text-center p-8 text-slate-400 text-sm space-y-2">
+              <p className="font-semibold text-white">
+                {imgError ? 'No se pudo cargar la imagen del comprobante' : 'Sin imagen de comprobante disponible'}
+              </p>
+              {imageUrl && (
+                <a
+                  href={imageUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:text-indigo-300 underline"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                  <span>Abrir enlace directo en nueva pestaña</span>
+                </a>
+              )}
             </div>
           )}
 

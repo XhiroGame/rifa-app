@@ -97,6 +97,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setSuccessData(null);
       setFile(null);
       setPreviewUrl(null);
+      setIsZoomOpen(false);
+      setZoomImageUrl(null);
       setErrorMessage(null);
       setIsSubmitting(false);
       setLoadingStep('');
@@ -126,6 +128,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   // Manejador centralizado de cierre para limpiar todo el estado
   const handleClose = () => {
+    setIsZoomOpen(false);
+    setZoomImageUrl(null);
     setSuccessData(null);
     setFile(null);
     if (previewUrl) {
@@ -206,6 +210,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     setErrorMessage(null);
     setLoadingStep('Analizando comprobante con Gemini AI...');
 
+    let stepTimer: ReturnType<typeof setTimeout> | null = null;
     try {
       const formData = new FormData();
       formData.append('numero', ticket.numero);
@@ -215,8 +220,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       formData.append('pin', cleanPin);
       formData.append('comprobante', file);
 
-      setTimeout(() => {
-        setLoadingStep('Validando referencia única y subiendo a Google Drive...');
+      stepTimer = setTimeout(() => {
+        setLoadingStep('Validando referencia única y subiendo comprobante a la nube...');
       }, 1200);
 
       const res = await fetch('/api/process-receipt', {
@@ -241,6 +246,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       console.error(err);
       setErrorMessage('Error de conexión al enviar el comprobante.');
     } finally {
+      if (stepTimer) clearTimeout(stepTimer);
       setIsSubmitting(false);
       setLoadingStep('');
     }
