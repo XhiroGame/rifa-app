@@ -58,6 +58,21 @@ export function generateHexPin(): string {
   }
 }
 
+/**
+ * Normaliza el nombre de un participante para agrupar todas sus boletas aunque varíen tildes o espacios
+ */
+export function normalizeOwnerName(name?: string): string {
+  if (!name) return '';
+  return name
+    .toString()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 // Generador de boletas en memoria para modo demo
 export function generateMockTickets(): Ticket[] {
   const tickets: Ticket[] = [];
@@ -174,11 +189,25 @@ export function validateDemoTicketPin(numero: string, pin: string): { valid: boo
   if (!t) return { valid: false, message: 'Boleta no encontrada.' };
   if (t.estado === 'Disponible') return { valid: true, message: 'Boleta disponible.' };
 
-  const storedPin = (t.claveSeguridad || 'A1B2').trim().toUpperCase();
   const cleanPin = pin.trim().toUpperCase();
+  const storedPin = (t.claveSeguridad || 'A1B2').trim().toUpperCase();
 
   if (storedPin === cleanPin) {
     return { valid: true, message: 'Clave validada con éxito.' };
+  }
+
+  // Si el titular tiene varias boletas, aceptar cualquiera de las claves asociadas a su nombre
+  const ownerNorm = normalizeOwnerName(t.nombre);
+  if (ownerNorm) {
+    const matchAny = tickets.some(
+      (tk) =>
+        tk.estado !== 'Disponible' &&
+        normalizeOwnerName(tk.nombre) === ownerNorm &&
+        (tk.claveSeguridad || '').trim().toUpperCase() === cleanPin
+    );
+    if (matchAny) {
+      return { valid: true, message: 'Clave de titular validada con éxito.' };
+    }
   }
 
   return { valid: false, message: 'Clave única incorrecta. Verifica tu PIN hexadecimal de 4 cifras (ej: 7A3F).' };

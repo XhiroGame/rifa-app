@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { extractReceiptDataWithGemini } from '@/lib/geminiReceipt';
 import { uploadReceiptToGoogleDrive } from '@/lib/googleDrive';
-import { checkDuplicateReference, payCuotaInGoogleSheets } from '@/lib/googleSheets';
+import { checkDuplicateReference, payMultipleCuotasInGoogleSheets } from '@/lib/googleSheets';
 
 export async function POST(request: Request) {
   try {
@@ -61,16 +61,46 @@ export async function POST(request: Request) {
       );
     }
 
-    // Normalizar número de boleta (ej: "023")
-    let numero = numeroRaw.trim();
-    if (numero.startsWith('[') && numero.endsWith(']')) {
+    // Normalizar lista de boletas seleccionadas (soporta 1 o múltiples boletas del mismo titular)
+    const boletasJsonRaw = formData.get('boletas') as string | null;
+    const defaultMes = mesRaw ? Math.min(12, Math.max(1, parseInt(mesRaw, 10) || 1)) : 1;
+    let itemsToPay: Array<{ numero: string; mes: number }> = [];
+
+    if (boletasJsonRaw) {
       try {
-        const parsed = JSON.parse(numero);
-        numero = parsed[0] || '000';
+        const parsed = JSON.parse(boletasJsonRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          itemsToPay = parsed.map((item: any) => {
+            if (typeof item === 'object' && item !== null) {
+              return {
+                numero: parseInt(String(item.numero), 10).toString().padStart(3, '0'),
+                mes: Math.min(12, Math.max(1, parseInt(String(item.mes || defaultMes), 10) || 1)),
+              };
+            }
+            return {
+              numero: parseInt(String(item), 10).toString().padStart(3, '0'),
+              mes: defaultMes,
+            };
+          });
+        }
       } catch {}
     }
-    const cleanNum = parseInt(numero, 10).toString().padStart(3, '0');
-    const mes = mesRaw ? Math.min(12, Math.max(1, parseInt(mesRaw, 10) || 1)) : 1;
+
+    if (itemsToPay.length === 0) {
+      let numero = numeroRaw.trim();
+      if (numero.startsWith('[') && numero.endsWith(']')) {
+        try {
+          const parsed = JSON.parse(numero);
+          numero = parsed[0] || '000';
+        } catch {}
+      }
+      const cleanNum = parseInt(numero, 10).toString().padStart(3, '0');
+      itemsToPay = [{ numero: cleanNum, mes: defaultMes }];
+    }
+
+    const cleanNum = itemsToPay[0].numero;
+    const mes = itemsToPay[0].mes;
+    const allNums = itemsToPay.map((i) => i.numero);
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -106,15 +136,14 @@ export async function POST(request: Request) {
       }
     }
 
-    // 3. Subida del comprobante a Google Drive
-    const driveResult = await uploadReceiptToGoogleDrive(buffer, file.name, file.type, [cleanNum]);
+    // 3. Subida del comprobante a Vercel Blob / Google Drive
+    const driveResult = await uploadReceiptToGoogleDrive(buffer, file.name, file.type, allNums);
 
-    // 4. Registro de la cuota en Google Sheets
-    const saveResult = await payCuotaInGoogleSheets(
-      cleanNum,
+    // 4. Registro de la(s) cuota(s) en Google Sheets
+    const saveResult = await payMultipleCuotasInGoogleSheets(
+      itemsToPay,
       nombre,
       cleanWhatsapp,
-      mes,
       extractedData,
       driveResult.webViewLink,
       pin || undefined
@@ -131,6 +160,7 @@ export async function POST(request: Request) {
       success: true,
       message: saveResult.message,
       numero: cleanNum,
+      numeros: allNums,
       mes,
       claveAsignada: saveResult.claveAsignada,
       extractedData: {

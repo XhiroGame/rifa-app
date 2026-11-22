@@ -49,7 +49,12 @@ export default function Home() {
 
   // Modals state
   const [detailTicket, setDetailTicket] = useState<Ticket | null>(null);
-  const [checkoutData, setCheckoutData] = useState<{ ticket: Ticket; mes: number; pin?: string } | null>(null);
+  const [checkoutData, setCheckoutData] = useState<{
+    ticket: Ticket;
+    mes: number;
+    pin?: string;
+    selectedTickets?: Ticket[];
+  } | null>(null);
 
   // Fetch tickets from API
   const fetchTicketsData = useCallback(async (isSilent = false) => {
@@ -141,27 +146,33 @@ export default function Home() {
     setRangeFilter('all');
   };
 
-  // Abrir pago de cuota con clave única opcional
-  const handlePayNextCuota = (ticket: Ticket, mes: number, pin?: string) => {
+  // Abrir pago de cuota (individual o múltiple) con clave única validada
+  const handlePayNextCuota = (ticket: Ticket, mes: number, pin?: string, selectedTickets?: Ticket[]) => {
     setDetailTicket(null);
-    setCheckoutData({ ticket, mes, pin });
+    setCheckoutData({
+      ticket,
+      mes,
+      pin,
+      selectedTickets: selectedTickets && selectedTickets.length > 0 ? selectedTickets : [ticket],
+    });
   };
 
   // Apartar boleta libre
   const handleReserveNew = (ticket: Ticket) => {
     setDetailTicket(null);
-    setCheckoutData({ ticket, mes: 1 });
+    setCheckoutData({ ticket, mes: 1, selectedTickets: [ticket] });
   };
 
-  // Éxito al subir comprobante de cuota
-  const handleCheckoutSuccess = (ticketNumero: string, mes: number) => {
+  // Éxito al subir comprobante de cuota (individual o múltiple)
+  const handleCheckoutSuccess = (ticketNumero: string, mes: number, paidNumeros?: string[]) => {
+    const targetSet = new Set(paidNumeros && paidNumeros.length > 0 ? paidNumeros : [ticketNumero]);
     setTickets((prev) =>
       prev.map((t) =>
-        t.numero === ticketNumero
+        targetSet.has(t.numero)
           ? {
               ...t,
               estado: 'En revisión',
-              cuotaEnRevision: mes,
+              cuotaEnRevision: (t.cuotasPagadas || 0) < 12 ? (t.cuotasPagadas || 0) + 1 : mes,
             }
           : t
       )
@@ -211,6 +222,7 @@ export default function Home() {
         {/* Modal de Detalle de Boleta y Plan de 12 Cuotas */}
         <TicketModal
           ticket={detailTicket}
+          allTickets={tickets}
           config={config}
           onClose={() => setDetailTicket(null)}
           onPayNextCuota={handlePayNextCuota}
@@ -221,6 +233,7 @@ export default function Home() {
         <CheckoutModal
           isOpen={Boolean(checkoutData)}
           ticket={checkoutData?.ticket || null}
+          selectedTickets={checkoutData?.selectedTickets}
           mes={checkoutData?.mes || 1}
           initialPin={checkoutData?.pin}
           config={config}

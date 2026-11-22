@@ -11,6 +11,7 @@ import {
   CUOTA_PRECIO,
   MES_ACTUAL_RIFA,
   create12Cuotas,
+  normalizeOwnerName,
 } from './mockTickets';
 import { ExtractedReceiptData } from './geminiReceipt';
 
@@ -236,7 +237,7 @@ export async function checkDuplicateReference(referencia: string): Promise<{
  */
 export async function validateTicketPin(numero: string, pin: string): Promise<{ valid: boolean; message: string }> {
   const numInt = parseInt(numero, 10);
-  if (isNaN(numInt)) return { valid: false, message: 'Número inválido.' };
+  if (isNaN(numInt) || numInt < 0 || numInt > 999) return { valid: false, message: 'Número inválido.' };
   const paddedNum = numInt.toString().padStart(3, '0');
 
   if (!isGoogleSheetsConfigured()) {
@@ -245,25 +246,38 @@ export async function validateTicketPin(numero: string, pin: string): Promise<{ 
 
   try {
     const sheets = getGoogleSheetsClient();
-    const rowIndex = numInt + 2;
-
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `'${SHEET_TAB_NAME}'!B${rowIndex}:V${rowIndex}`,
+      range: `'${SHEET_TAB_NAME}'!A2:V1001`,
     });
 
-    const row = res.data.values?.[0] || [];
-    const estado = row[0]?.toString().trim() || '';
-    if (estado.toLowerCase() === 'disponible') {
+    const rows = res.data.values || [];
+    const targetRow = rows[numInt] || [];
+    const estado = (targetRow[1] || '').toString().trim();
+    const nombreTitular = (targetRow[2] || '').toString().trim();
+
+    if (estado.toLowerCase() === 'disponible' && !nombreTitular) {
       return { valid: true, message: 'Boleta disponible.' };
     }
 
-    // Columna V es índice 20 relativo a B
-    const storedPin = (row[20] || 'A1B2').toString().trim().toUpperCase();
+    const storedPin = (targetRow[21] || 'A1B2').toString().trim().toUpperCase();
     const cleanPin = pin.trim().toUpperCase();
 
     if (storedPin === cleanPin) {
       return { valid: true, message: 'Clave validada con éxito.' };
+    }
+
+    // Si el titular tiene más de 1 boleta, aceptar cualquiera de las claves asignadas a sus boletas
+    const ownerNorm = normalizeOwnerName(nombreTitular);
+    if (ownerNorm) {
+      for (const r of rows) {
+        if (!r || r.length === 0) continue;
+        const rName = (r[2] || '').toString().trim();
+        const rPin = (r[21] || '').toString().trim().toUpperCase();
+        if (rName && normalizeOwnerName(rName) === ownerNorm && rPin === cleanPin) {
+          return { valid: true, message: 'Clave de titular validada con éxito.' };
+        }
+      }
     }
 
     return { valid: false, message: 'Clave única incorrecta. Verifica tu PIN hexadecimal de 4 cifras (ej: 7A3F).' };
@@ -414,6 +428,213 @@ export async function payCuotaInGoogleSheets(
     return {
       success: false,
       message: 'Error al actualizar la cuota en Google Sheets.',
+    };
+  }
+}
+
+/**
+ * Registra el pago de una o múltiples boletas seleccionadas por un mismo titular en una sola operación batch
+ */
+export async function payMultipleCuotasInGoogleSheets(
+  items: Array<{ numero: string; mes: number }>,
+  nombre: string,
+  telefono: string,
+  receiptData: ExtractedReceiptData,
+  driveUrl: string,
+  pinIngresado?: string
+): Promise<{ success: boolean; message: string; claveAsignada?: string; numeros?: string[] }> {
+  if (!items || items.length === 0) {
+    return { success: false, message: 'No se seleccionaron boletas para pagar.' };
+  }
+
+  // Si es solo 1 boleta, igual podemos procesarla con el flujo batch o individual
+  if (!isGoogleSheetsConfigured()) {
+    let lastPin: string | undefined;
+    const paidNums: string[] = [];
+    for (const item of items) {
+      const padded = parseInt(item.numero, 10).toString().padStart(3, '0');
+      const res = payCuotaDemo(padded, nombre, telefono, item.mes, receiptData, driveUrl, pinIngresado);
+      if (!res.success) return res;
+      lastPin = res.claveAsignada;
+      paidNums.push(padded);
+    }
+    return {
+      success: true,
+      message:
+        paidNums.length > 1
+          ? `¡Comprobante registrado en revisión para ${paidNums.length} boletas (${paidNums.map((n) => `#${n}`).join(', ')})!`
+          : `¡Comprobante de la boleta #${paidNums[0]} registrado en revisión!`,
+      claveAsignada: lastPin,
+      numeros: paidNums,
+    };
+  }
+
+  try {
+    const sheets = getGoogleSheetsClient();
+    const allRes = await sheets.spreadsheets.values.get({
+      spreadsheetId: SHEET_ID,
+      range: `'${SHEET_TAB_NAME}'!A2:V1001`,
+    });
+
+    const rows = allRes.data.values || [];
+    const cleanPin = pinIngresado ? pinIngresado.trim().toUpperCase() : '';
+
+    // Reunir todas las claves válidas del titular (por si tiene múltiples boletas)
+    const validOwnerPins = new Set<string>();
+    for (const item of items) {
+      const idx = parseInt(item.numero, 10);
+      if (isNaN(idx) || idx < 0 || idx > 999) continue;
+      const r = rows[idx] || [];
+      const rName = (r[2] || '').toString().trim();
+      const rPin = (r[21] || '').toString().trim().toUpperCase();
+      if (rPin) validOwnerPins.add(rPin);
+      if (rName) {
+        const norm = normalizeOwnerName(rName);
+        for (const other of rows) {
+          if (!other || other.length === 0) continue;
+          if (normalizeOwnerName((other[2] || '').toString()) === norm) {
+            const oPin = (other[21] || '').toString().trim().toUpperCase();
+            if (oPin) validOwnerPins.add(oPin);
+          }
+        }
+      }
+    }
+
+    const normalizedItems = items.map((it) => ({
+      numInt: parseInt(it.numero, 10),
+      paddedNum: parseInt(it.numero, 10).toString().padStart(3, '0'),
+      mes: Math.min(12, Math.max(1, it.mes || 1)),
+    }));
+
+    for (const it of normalizedItems) {
+      if (isNaN(it.numInt) || it.numInt < 0 || it.numInt > 999) {
+        return { success: false, message: `Número de boleta inválido: ${it.paddedNum}` };
+      }
+      const row = rows[it.numInt] || [];
+      const estadoActual = (row[1] || 'disponible').toString().trim().toLowerCase();
+      const rowName = (row[2] || '').toString().trim();
+      const isOccupied = estadoActual !== 'disponible' || Boolean(rowName);
+
+      if (isOccupied) {
+        if (!cleanPin || !validOwnerPins.has(cleanPin)) {
+          return {
+            success: false,
+            message: `Clave única incorrecta para la boleta #${it.paddedNum}. Ingresa tu código hexadecimal de 4 cifras.`,
+          };
+        }
+      }
+    }
+
+    const groupTag =
+      normalizedItems.length > 1
+        ? ` [Pago grupal ${normalizedItems.length} boletas: ${normalizedItems.map((i) => `#${i.paddedNum}`).join(', ')}]`
+        : '';
+
+    const clearRanges: string[] = [];
+    const valueUpdates: Array<{ range: string; values: any[][] }> = [];
+    let claveAsignada = cleanPin;
+
+    for (const it of normalizedItems) {
+      const rowIndex = it.numInt + 2;
+      const row = rows[it.numInt] || [];
+      const estadoActual = (row[1] || 'disponible').toString().trim().toLowerCase();
+      const rowName = (row[2] || '').toString().trim();
+      const cuotasPagadas = parseInt((row[4] || '0').toString(), 10) || 0;
+      const storedPin = (row[21] || '').toString().trim().toUpperCase();
+
+      let pinToSave = storedPin || cleanPin;
+      if (estadoActual === 'disponible' && !rowName) {
+        if (/^[0-9A-F]{4}$/i.test(cleanPin) && !/^\d+E\d+$/i.test(cleanPin)) {
+          pinToSave = cleanPin;
+        } else {
+          while (true) {
+            const candidate = Math.floor(Math.random() * 0x10000).toString(16).toUpperCase().padStart(4, '0');
+            if (!/^\d+E\d+$/i.test(candidate)) {
+              pinToSave = candidate;
+              break;
+            }
+          }
+        }
+      }
+      claveAsignada = pinToSave;
+
+      const colLetter = String.fromCharCode(71 + (it.mes - 1));
+      const prevNotas = (row[20] || '').toString().trim();
+      const baseReferido = prevNotas
+        .split('|')
+        .map((s: string) => s.trim())
+        .filter((s: string) => s && !/^Cuota \d+/i.test(s) && !/^En revisión$/i.test(s) && !/^Aprobada$/i.test(s))
+        .join(' | ');
+      const cuotaNota = `Cuota ${it.mes} (${MESES_NOMBRES[it.mes - 1]}): Ref ${receiptData.referencia}${groupTag} | En revisión`;
+      const notas = baseReferido ? `${baseReferido} | ${cuotaNota}` : cuotaNota;
+
+      const prevColD = (row[3] || '').toString().trim();
+      const prevHasPhone = /\d{7,}/.test(prevColD);
+      const finalColD = telefono
+        ? prevColD && !prevHasPhone
+          ? `${telefono} (${prevColD})`
+          : telefono
+        : prevColD;
+
+      const prevTotalAbonado = parseInt((row[5] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
+      const currentTotalAbonado = Math.max(prevTotalAbonado, cuotasPagadas * CUOTA_PRECIO);
+
+      clearRanges.push(`'${SHEET_TAB_NAME}'!T${rowIndex}`);
+
+      valueUpdates.push({
+        range: `'${SHEET_TAB_NAME}'!A${rowIndex}:F${rowIndex}`,
+        values: [
+          [
+            it.paddedNum,
+            'En revisión',
+            rowName || nombre || '',
+            finalColD,
+            cuotasPagadas,
+            currentTotalAbonado,
+          ],
+        ],
+      });
+
+      valueUpdates.push({
+        range: `'${SHEET_TAB_NAME}'!${colLetter}${rowIndex}`,
+        values: [['En revisión']],
+      });
+
+      valueUpdates.push({
+        range: `'${SHEET_TAB_NAME}'!S${rowIndex}:V${rowIndex}`,
+        values: [[receiptData.referencia, driveUrl, notas, pinToSave]],
+      });
+    }
+
+    await sheets.spreadsheets.values.batchClear({
+      spreadsheetId: SHEET_ID,
+      requestBody: { ranges: clearRanges },
+    });
+
+    await sheets.spreadsheets.values.batchUpdate({
+      spreadsheetId: SHEET_ID,
+      requestBody: {
+        valueInputOption: 'USER_ENTERED',
+        data: valueUpdates,
+      },
+    });
+
+    const paidNums = normalizedItems.map((i) => i.paddedNum);
+
+    return {
+      success: true,
+      message:
+        paidNums.length > 1
+          ? `¡Comprobante registrado en revisión para ${paidNums.length} boletas (${paidNums.map((n) => `#${n}`).join(', ')})!`
+          : `¡Comprobante de la cuota ${normalizedItems[0].mes} (${MESES_NOMBRES[normalizedItems[0].mes - 1]}) registrado y en revisión!`,
+      claveAsignada,
+      numeros: paidNums,
+    };
+  } catch (error) {
+    console.error('Error al registrar múltiples cuotas en Google Sheets:', error);
+    return {
+      success: false,
+      message: 'Error al actualizar las boletas seleccionadas en Google Sheets.',
     };
   }
 }

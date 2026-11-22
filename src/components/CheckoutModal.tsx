@@ -51,16 +51,18 @@ interface DriveData {
 interface CheckoutModalProps {
   isOpen: boolean;
   ticket: Ticket | null;
+  selectedTickets?: Ticket[];
   mes: number; // 1 a 12
   initialPin?: string;
   config: RaffleConfig;
   onClose: () => void;
-  onSuccess: (ticketNumero: string, mes: number) => void;
+  onSuccess: (ticketNumero: string, mes: number, paidNumeros?: string[]) => void;
 }
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
   ticket,
+  selectedTickets,
   mes,
   initialPin,
   config,
@@ -123,8 +125,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen || !ticket) return null;
 
+  const activeTickets =
+    selectedTickets && selectedTickets.length > 0 ? selectedTickets : [ticket];
+  const isMultiPay = activeTickets.length > 1;
+  const totalAmount = activeTickets.length * 100000;
+  const totalAmountFormatted = `$${totalAmount.toLocaleString('es-CO')} COP`;
+  const activeNumsLabel = activeTickets.map((t) => `#${t.numero}`).join(', ');
+
   const nombreMes = MESES_NOMBRES[mes - 1] || `Mes ${mes}`;
-  const esApartadoInicial = ticket.estado === 'Disponible';
+  const esApartadoInicial = ticket.estado === 'Disponible' && !isMultiPay;
 
   // Manejador centralizado de cierre para limpiar todo el estado
   const handleClose = () => {
@@ -214,6 +223,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     try {
       const formData = new FormData();
       formData.append('numero', ticket.numero);
+      formData.append(
+        'boletas',
+        JSON.stringify(
+          activeTickets.map((t) => ({
+            numero: t.numero,
+            mes: (t.cuotasPagadas || 0) < 12 ? (t.cuotasPagadas || 0) + 1 : 12,
+          }))
+        )
+      );
       formData.append('mes', mes.toString());
       formData.append('nombre', nombre.trim());
       formData.append('whatsapp', cleanWhatsapp);
@@ -238,7 +256,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           drive: data.drive,
           claveAsignada: data.claveAsignada || cleanPin,
         });
-        onSuccess(ticket.numero, mes);
+        onSuccess(
+          ticket.numero,
+          mes,
+          data.numeros || activeTickets.map((t) => t.numero)
+        );
       } else {
         setErrorMessage(data.message || 'Ocurrió un error al procesar el pago.');
       }
@@ -265,7 +287,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     const activePin = successData?.claveAsignada || pin.toUpperCase();
     const pinStr = activePin ? `\n🔑 Clave Única (PIN Hex): ${activePin}` : '';
     const refStr = successData?.extractedData?.referencia ? `\n🔖 Referencia: ${successData.extractedData.referencia}` : '';
-    const msg = `¡Hola! Acabo de registrar el pago de mi cuota de Rifas e Inversiones La Calidosa.\n\n🎟️ Boleta: #${ticket.numero}\n📅 Cuota: Mes ${mes} (${nombreMes})\n💰 Valor: $100.000 COP\n👤 Nombre: ${nombre.trim()}\n📱 WhatsApp: ${whatsapp.trim()}${pinStr}${refStr}\n\nQuedo atento(a) a la aprobación oficial. ¡Muchas gracias!`;
+    const boletaStr = isMultiPay
+      ? `🎟️ Boletas (${activeTickets.length}): ${activeNumsLabel}`
+      : `🎟️ Boleta: #${ticket.numero}\n📅 Cuota: Mes ${mes} (${nombreMes})`;
+    const msg = `¡Hola! Acabo de registrar el pago de ${isMultiPay ? `mis ${activeTickets.length} boletas seleccionadas` : 'mi cuota'} de Rifas e Inversiones La Calidosa.\n\n${boletaStr}\n💰 Valor Total: ${totalAmountFormatted}\n👤 Nombre: ${nombre.trim()}\n📱 WhatsApp: ${whatsapp.trim()}${pinStr}${refStr}\n\nQuedo atento(a) a la aprobación oficial. ¡Muchas gracias!`;
     const url = `https://wa.me/${cleanWaNum}?text=${encodeURIComponent(msg)}`;
     window.open(url, '_blank');
   };
@@ -290,12 +315,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
             <div>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-300 border border-violet-500/30 mb-2">
-                <Clock className="h-3.5 w-3.5" /> Estado: Cuota en revisión
+                <Clock className="h-3.5 w-3.5" /> Estado: {isMultiPay ? `${activeTickets.length} boletas en revisión` : 'Cuota en revisión'}
               </span>
               <h2 className="text-2xl font-black text-white">¡Comprobante Enviado!</h2>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-sm mx-auto">
-                Tu pago para la <strong className="text-white">Cuota {mes} ({nombreMes})</strong> de la boleta{' '}
-                <strong className="text-emerald-400">#{ticket.numero}</strong> ha sido registrado en Google Sheets.
+                {isMultiPay ? (
+                  <>
+                    Tu pago por <strong className="text-emerald-400">{totalAmountFormatted}</strong> para las{' '}
+                    <strong className="text-white">{activeTickets.length} boletas seleccionadas ({activeNumsLabel})</strong> ha sido registrado en Google Sheets.
+                  </>
+                ) : (
+                  <>
+                    Tu pago para la <strong className="text-white">Cuota {mes} ({nombreMes})</strong> de la boleta{' '}
+                    <strong className="text-emerald-400">#{ticket.numero}</strong> ha sido registrado en Google Sheets.
+                  </>
+                )}
               </p>
             </div>
 
@@ -425,21 +459,45 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           /* View 2: Formulario de Pago y Apartado */
           <div>
             <div className="mb-5">
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="font-mono text-2xl font-black text-white">
-                  Boleta #{ticket.numero}
+                  {isMultiPay ? `${activeTickets.length} Boletas Seleccionadas` : `Boleta #${ticket.numero}`}
                 </span>
                 <span className="font-semibold text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full">
-                  Cuota {mes} ({nombreMes})
+                  {isMultiPay ? `${activeTickets.length} × $100.000 COP` : `Cuota ${mes} (${nombreMes})`}
                 </span>
               </div>
               <h2 className="text-xl font-black text-white">
-                {esApartadoInicial ? 'Apartar Boleta con Cuota 1' : `Pagar Mensualidad - ${nombreMes}`}
+                {esApartadoInicial
+                  ? 'Apartar Boleta con Cuota 1'
+                  : isMultiPay
+                  ? `Pago Grupal de ${activeTickets.length} Boletas`
+                  : `Pagar Mensualidad - ${nombreMes}`}
               </h2>
               <p className="text-xs text-slate-400 mt-1">
-                Valor mensualidad:{' '}
-                <strong className="text-emerald-400 font-mono text-sm">$100.000 COP</strong>
+                Valor total a transferir:{' '}
+                <strong className="text-emerald-400 font-mono text-sm">{totalAmountFormatted}</strong>
               </p>
+              {isMultiPay && (
+                <div className="mt-2.5 rounded-xl bg-indigo-950/35 border border-indigo-500/30 p-2.5 text-xs">
+                  <span className="text-slate-400 text-[11px] block mb-1">
+                    Números incluidos en este pago:
+                  </span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {activeTickets.map((t) => {
+                      const tMes = (t.cuotasPagadas || 0) < 12 ? (t.cuotasPagadas || 0) + 1 : 12;
+                      return (
+                        <span
+                          key={t.numero}
+                          className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                        >
+                          #{t.numero} (Cuota {tMes})
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {errorMessage && (
@@ -600,7 +658,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               {/* Subida del Comprobante */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Comprobante de Pago de $100.000 COP (JPG o PNG) <span className="text-rose-400">*</span>
+                  Comprobante de Pago de {totalAmountFormatted} (JPG o PNG) <span className="text-rose-400">*</span>
                 </label>
 
                 <input
@@ -668,7 +726,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <UploadCloud className="h-5 w-5" />
                     </div>
                     <p className="text-xs font-semibold text-slate-200">
-                      Sube la captura de la transferencia de $100.000 COP
+                      Sube la captura de la transferencia por {totalAmountFormatted}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
                       Gemini validará la fecha, hora y número de referencia
@@ -691,7 +749,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     </>
                   ) : (
                     <>
-                      <span>Enviar Comprobante de Cuota ($100.000 COP)</span>
+                      <span>
+                        {isMultiPay
+                          ? `Enviar Comprobante de ${activeTickets.length} Boletas (${totalAmountFormatted})`
+                          : `Enviar Comprobante de Cuota (${totalAmountFormatted})`}
+                      </span>
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}

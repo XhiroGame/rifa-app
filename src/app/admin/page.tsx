@@ -199,6 +199,47 @@ export default function AdminPage() {
     }
   };
 
+  // Aprobar en lote todas las boletas que comparten el mismo comprobante grupal
+  const handleBatchApproveGroup = async (groupTickets: Ticket[]) => {
+    if (groupTickets.length === 0) return;
+    const primary = groupTickets[0];
+    const primaryMes = primary.cuotaEnRevision || primary.cuotasPagadas + 1;
+    setActionLoading(`batch-${primary.numero}`);
+    try {
+      for (const gt of groupTickets) {
+        const gtMes = gt.cuotaEnRevision || gt.cuotasPagadas + 1;
+        await fetch('/api/admin/action', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            numero: gt.numero,
+            mes: gtMes,
+            action: 'approve',
+          }),
+        });
+      }
+      showToast(
+        `¡Aprobadas las ${groupTickets.length} boletas del pago grupal (${groupTickets.map((t) => `#${t.numero}`).join(', ')})!`,
+        'success'
+      );
+      if (previewTicket) setPreviewTicket(null);
+      fetchAdminTickets(true);
+      setApprovalSuccessData({
+        ticket: {
+          ...primary,
+          estado: 'Al día',
+          cuotasPagadas: primaryMes,
+        },
+        mes: primaryMes,
+        nombreMes: MESES_NOMBRES[primaryMes - 1],
+      });
+    } catch (err) {
+      showToast('Error al aprobar el grupo de boletas.', 'error');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   // Filtrado de boletas
   const filteredTickets = useMemo(() => {
     return tickets.filter((t) => {
@@ -712,28 +753,62 @@ export default function AdminPage() {
                     )}
                   </div>
 
-                  {/* Acciones */}
+                    {/* Acciones */}
                   <div className="pt-4 border-t border-slate-800/80 mt-3 space-y-2">
                     {ticket.estado === 'En revisión' ? (
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() => handleCuotaAction(ticket.numero, mesRevision, 'approve')}
-                          className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 py-2.5 px-3 text-xs font-bold text-white transition-colors cursor-pointer shadow-md shadow-emerald-600/20"
-                        >
-                          {isProcessing ? <span>Aprobando...</span> : <span>Aprobar Cuota</span>}
-                        </button>
+                      (() => {
+                        const groupSiblings =
+                          ticket.referencia || ticket.comprobanteUrl
+                            ? tickets.filter(
+                                (other) =>
+                                  other.estado === 'En revisión' &&
+                                  ((ticket.referencia && other.referencia === ticket.referencia) ||
+                                    (ticket.comprobanteUrl && other.comprobanteUrl === ticket.comprobanteUrl))
+                              )
+                            : [ticket];
+                        const isBatchLoading = actionLoading === `batch-${groupSiblings[0]?.numero}`;
 
-                        <button
-                          type="button"
-                          disabled={isProcessing}
-                          onClick={() => handleCuotaAction(ticket.numero, mesRevision, 'reject')}
-                          className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 py-2.5 px-3 text-xs font-bold text-white transition-colors cursor-pointer shadow-md shadow-rose-600/20"
-                        >
-                          <span>Rechazar</span>
-                        </button>
-                      </div>
+                        return (
+                          <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-2">
+                              <button
+                                type="button"
+                                disabled={isProcessing || isBatchLoading}
+                                onClick={() => handleCuotaAction(ticket.numero, mesRevision, 'approve')}
+                                className="flex items-center justify-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 py-2.5 px-3 text-xs font-bold text-white transition-colors cursor-pointer shadow-md shadow-emerald-600/20"
+                              >
+                                {isProcessing ? <span>Aprobando...</span> : <span>Aprobar Cuota</span>}
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isProcessing || isBatchLoading}
+                                onClick={() => handleCuotaAction(ticket.numero, mesRevision, 'reject')}
+                                className="flex items-center justify-center gap-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-50 py-2.5 px-3 text-xs font-bold text-white transition-colors cursor-pointer shadow-md shadow-rose-600/20"
+                              >
+                                <span>Rechazar</span>
+                              </button>
+                            </div>
+                            {groupSiblings.length > 1 && (
+                              <button
+                                type="button"
+                                disabled={isProcessing || isBatchLoading}
+                                onClick={() => handleBatchApproveGroup(groupSiblings)}
+                                className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 py-2 px-3 text-xs font-bold text-white transition-colors cursor-pointer shadow-md"
+                              >
+                                {isBatchLoading ? (
+                                  <span>Aprobando las {groupSiblings.length} boletas...</span>
+                                ) : (
+                                  <span>
+                                    Aprobar las {groupSiblings.length} Boletas del Comprobante ($
+                                    {(groupSiblings.length * 100000).toLocaleString('es-CO')})
+                                  </span>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()
                     ) : ticket.estado === 'En mora' ? (
                       /\d{10}/.test((ticket.telefono || '').replace(/\D/g, '')) ? (
                         <a

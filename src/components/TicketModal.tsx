@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Ticket, RaffleConfig } from '@/types/ticket';
+import { MESES_NOMBRES, normalizeOwnerName } from '@/lib/mockTickets';
 import {
   X,
   CheckCircle2,
@@ -22,13 +23,17 @@ import {
   RefreshCw,
   MapPin,
   FileText,
+  Layers,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
 
 interface TicketModalProps {
   ticket: Ticket | null;
+  allTickets?: Ticket[];
   config: RaffleConfig;
   onClose: () => void;
-  onPayNextCuota: (ticket: Ticket, mes: number, pin?: string) => void;
+  onPayNextCuota: (ticket: Ticket, mes: number, pin?: string, selectedTickets?: Ticket[]) => void;
   onReserveNew: (ticket: Ticket) => void;
 }
 
@@ -51,6 +56,7 @@ function maskPhone(phone?: string): string {
 
 export const TicketModal: React.FC<TicketModalProps> = ({
   ticket,
+  allTickets = [],
   config,
   onClose,
   onPayNextCuota,
@@ -61,6 +67,25 @@ export const TicketModal: React.FC<TicketModalProps> = ({
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [pinError, setPinError] = useState<string | null>(null);
   const [showPin, setShowPin] = useState(false);
+  const [selectedNums, setSelectedNums] = useState<string[]>([]);
+
+  // Todas las boletas que pertenecen a este mismo titular
+  const ownerTickets = useMemo(() => {
+    if (!ticket || ticket.estado === 'Disponible' || !ticket.nombre) {
+      return ticket ? [ticket] : [];
+    }
+    const targetNorm = normalizeOwnerName(ticket.nombre);
+    if (!targetNorm || allTickets.length === 0) return [ticket];
+    const matches = allTickets.filter(
+      (t) => t.estado !== 'Disponible' && normalizeOwnerName(t.nombre) === targetNorm
+    );
+    return matches.length > 0 ? matches : [ticket];
+  }, [ticket, allTickets]);
+
+  // Boletas del titular que pueden recibir pago de cuota ahora mismo
+  const payableOwnerTickets = useMemo(() => {
+    return ownerTickets.filter((t) => (t.cuotasPagadas || 0) < 12 && t.estado !== 'En revisión');
+  }, [ownerTickets]);
 
   // Resetear estados al cambiar de boleta
   useEffect(() => {
@@ -68,7 +93,17 @@ export const TicketModal: React.FC<TicketModalProps> = ({
     setIsUnlocked(false);
     setPinError(null);
     setIsValidating(false);
+    if (ticket) {
+      setSelectedNums([ticket.numero]);
+    }
   }, [ticket?.numero]);
+
+  // Al desbloquear, sugerir por defecto pagar el total de las boletas pendientes del titular
+  useEffect(() => {
+    if (isUnlocked && payableOwnerTickets.length > 0) {
+      setSelectedNums(payableOwnerTickets.map((t) => t.numero));
+    }
+  }, [isUnlocked, payableOwnerTickets]);
 
   if (!ticket) return null;
 
@@ -77,6 +112,15 @@ export const TicketModal: React.FC<TicketModalProps> = ({
   // Calcular la siguiente cuota a pagar (1 a 12)
   const siguienteMes = cuotasPagadas < 12 ? cuotasPagadas + 1 : 12;
   const cuotaPendiente = cuotas.find((c) => c.mes === siguienteMes);
+
+  const toggleSelectTicket = (num: string) => {
+    setSelectedNums((prev) =>
+      prev.includes(num) ? prev.filter((n) => n !== num) : [...prev, num]
+    );
+  };
+
+  const selectedTicketsList = payableOwnerTickets.filter((t) => selectedNums.includes(t.numero));
+  const pendingUnselectedCount = Math.max(0, payableOwnerTickets.length - selectedTicketsList.length);
 
   // Validación de la clave única contra el backend
   const handleValidatePin = async (e: React.FormEvent) => {
@@ -403,22 +447,192 @@ export const TicketModal: React.FC<TicketModalProps> = ({
                   </div>
                 </div>
 
-                {/* Botón para Abonar la Siguiente Cuota con PIN validado */}
-                {cuotasPagadas < 12 ? (
+                {/* SECCIÓN MULTI-BOLETAS: Si el titular cuenta con más de 1 número asignado */}
+                {ownerTickets.length > 1 && (
+                  <div className="rounded-2xl bg-indigo-950/35 border-2 border-indigo-500/40 p-4 space-y-3 shadow-lg">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                          <Layers className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs sm:text-sm font-black text-white">
+                            Tienes {ownerTickets.length} Números Asignados
+                          </h4>
+                          <p className="text-[11px] text-indigo-200/80">
+                            Puedes pagar el total de tus números o seleccionar solo los que vas a abonar hoy
+                          </p>
+                        </div>
+                      </div>
+
+                      <span className="text-[11px] font-mono font-bold px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                        {selectedTicketsList.length} de {payableOwnerTickets.length} seleccionadas
+                      </span>
+                    </div>
+
+                    {/* Botones rápidos de selección */}
+                    {payableOwnerTickets.length > 1 && (
+                      <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNums(payableOwnerTickets.map((t) => t.numero))}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                            selectedTicketsList.length === payableOwnerTickets.length
+                              ? 'bg-emerald-500/25 text-emerald-200 border-emerald-500/50'
+                              : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border-slate-700'
+                          }`}
+                        >
+                          Pagar Todas ({payableOwnerTickets.length} = ${(payableOwnerTickets.length * 100000).toLocaleString('es-CO')})
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedNums([ticket.numero])}
+                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                            selectedTicketsList.length === 1 && selectedTicketsList[0]?.numero === ticket.numero
+                              ? 'bg-indigo-500/25 text-indigo-200 border-indigo-500/50'
+                              : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border-slate-700'
+                          }`}
+                        >
+                          Solo #{ticket.numero} ($100.000)
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Lista interactiva de todas las boletas del titular */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto pr-1">
+                      {ownerTickets.map((ot) => {
+                        const isPayable = (ot.cuotasPagadas || 0) < 12 && ot.estado !== 'En revisión';
+                        const isChecked = selectedNums.includes(ot.numero) && isPayable;
+                        const nextMesNum = (ot.cuotasPagadas || 0) < 12 ? (ot.cuotasPagadas || 0) + 1 : 12;
+                        const nextMesName = MESES_NOMBRES[nextMesNum - 1] || `Mes ${nextMesNum}`;
+
+                        return (
+                          <button
+                            key={ot.numero}
+                            type="button"
+                            disabled={!isPayable}
+                            onClick={() => toggleSelectTicket(ot.numero)}
+                            className={`flex items-center justify-between p-2.5 rounded-xl border text-left transition-all ${
+                              !isPayable
+                                ? 'bg-slate-900/50 border-slate-800 opacity-60 cursor-not-allowed'
+                                : isChecked
+                                ? 'bg-emerald-950/35 border-emerald-500/60 text-white shadow-sm cursor-pointer'
+                                : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 cursor-pointer'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              {isPayable ? (
+                                isChecked ? (
+                                  <CheckSquare className="h-4 w-4 text-emerald-400 shrink-0" />
+                                ) : (
+                                  <Square className="h-4 w-4 text-slate-500 shrink-0" />
+                                )
+                              ) : (
+                                <Clock className="h-4 w-4 text-violet-400 shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-mono text-sm font-black text-white">
+                                    #{ot.numero}
+                                  </span>
+                                  {ot.numero === ticket.numero && (
+                                    <span className="text-[9px] uppercase font-bold px-1.5 py-0.2 rounded bg-indigo-500/30 text-indigo-200">
+                                      Actual
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-[10px] text-slate-400 block truncate">
+                                  {ot.estado === 'En revisión'
+                                    ? 'Comprobante en revisión'
+                                    : (ot.cuotasPagadas || 0) >= 12
+                                    ? '12/12 Completada'
+                                    : `Cuota ${nextMesNum} (${nextMesName})`}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="text-right shrink-0 ml-2">
+                              <span
+                                className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded block ${
+                                  isChecked
+                                    ? 'bg-emerald-500/20 text-emerald-300'
+                                    : 'bg-slate-800 text-slate-400'
+                                }`}
+                              >
+                                {ot.cuotasPagadas || 0}/12
+                              </span>
+                              <span className="text-[9px] text-slate-400">
+                                {isPayable ? (isChecked ? '$100.000' : 'Pendiente') : ot.estado}
+                              </span>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Resumen de selección */}
+                    <div className="rounded-xl bg-slate-950/80 border border-slate-800/90 p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-400 block text-[11px]">
+                          {selectedTicketsList.length === payableOwnerTickets.length
+                            ? `Pagando el total de tus ${selectedTicketsList.length} boletas:`
+                            : `Seleccionaste ${selectedTicketsList.length} boleta(s) (${pendingUnselectedCount} quedará(n) pendiente(s)):`}
+                        </span>
+                        <span className="font-mono font-bold text-white text-xs">
+                          {selectedTicketsList.length > 0
+                            ? selectedTicketsList.map((t) => `#${t.numero}`).join(', ')
+                            : 'Ninguna boleta seleccionada'}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[10px] uppercase text-slate-400 block">Total a Pagar</span>
+                        <span className="font-mono text-base font-black text-emerald-400">
+                          ${(selectedTicketsList.length * 100000).toLocaleString('es-CO')} COP
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Botón para Abonar la(s) Boleta(s) Seleccionada(s) con PIN validado */}
+                {payableOwnerTickets.length > 0 ? (
                   <div className="pt-2 space-y-2">
                     <button
                       type="button"
-                      onClick={() => onPayNextCuota(ticket, siguienteMes, pinInput)}
-                      className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 py-3.5 px-4 text-sm font-bold text-slate-950 transition-all shadow-xl shadow-emerald-500/20 cursor-pointer"
+                      disabled={selectedTicketsList.length === 0}
+                      onClick={() => {
+                        const primary = selectedTicketsList[0] || ticket;
+                        const primaryMes = (primary.cuotasPagadas || 0) < 12 ? (primary.cuotasPagadas || 0) + 1 : 12;
+                        onPayNextCuota(primary, primaryMes, pinInput, selectedTicketsList);
+                      }}
+                      className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-40 disabled:cursor-not-allowed py-3.5 px-4 text-sm font-bold text-slate-950 transition-all shadow-xl shadow-emerald-500/20 cursor-pointer"
                     >
-                      <CreditCard className="h-4 w-4" />
+                      <CreditCard className="h-4 w-4 shrink-0" />
                       <span>
-                        Pagar Cuota {siguienteMes} ({cuotaPendiente?.nombreMes || ''}): $100.000 COP
+                        {ownerTickets.length > 1
+                          ? selectedTicketsList.length === payableOwnerTickets.length
+                            ? `Pagar Total de ${selectedTicketsList.length} Boletas: $${(
+                                selectedTicketsList.length * 100000
+                              ).toLocaleString('es-CO')} COP`
+                            : `Pagar ${selectedTicketsList.length} Boleta(s) Seleccionada(s): $${(
+                                selectedTicketsList.length * 100000
+                              ).toLocaleString('es-CO')} COP`
+                          : `Pagar Cuota ${siguienteMes} (${cuotaPendiente?.nombreMes || ''}): $100.000 COP`}
                       </span>
-                      <ArrowRight className="h-4 w-4" />
+                      <ArrowRight className="h-4 w-4 shrink-0" />
                     </button>
                     <p className="text-[11px] text-center text-slate-400">
-                      Sube el comprobante de transferencia y Gemini verificará la transacción automáticamente.
+                      {ownerTickets.length > 1 && pendingUnselectedCount > 0
+                        ? `Se registrará el pago de ${selectedTicketsList.length} boleta(s) y las otras ${pendingUnselectedCount} quedarán pendientes.`
+                        : 'Sube el comprobante de transferencia y Gemini verificará la transacción automáticamente.'}
+                    </p>
+                  </div>
+                ) : cuotasPagadas < 12 ? (
+                  <div className="rounded-2xl bg-violet-950/30 border border-violet-500/40 p-4 text-center">
+                    <Clock className="h-6 w-6 text-violet-400 mx-auto mb-1" />
+                    <p className="text-sm font-bold text-white">Comprobante en Revisión</p>
+                    <p className="text-xs text-violet-300">
+                      Tus boletas tienen un comprobante pendiente de aprobación por el administrador.
                     </p>
                   </div>
                 ) : (
