@@ -52,17 +52,17 @@ export const FilterBar: React.FC<FilterBarProps> = ({
   const ocupadas = Math.max(0, stats.total - stats.disponibles);
 
   return (
-    <div className="space-y-4 rounded-3xl bg-gradient-to-b from-[#18130a]/95 to-[#120e08]/95 border border-amber-500/30 p-4 sm:p-5 shadow-xl mb-6">
+    <div className="space-y-4 rounded-3xl bg-slate-900/90 border border-slate-800 p-4 sm:p-5 shadow-xl mb-6">
       {/* Row 1: Search, Lucky Pick & Refresh Button */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-400/80" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            placeholder="Buscar tu número de la suerte (ej: 023)..."
-            className="w-full rounded-2xl bg-[#0e0b06] pl-10 pr-9 py-2.5 text-sm text-white placeholder-amber-200/40 border border-amber-500/25 focus:border-amber-400 focus:outline-none transition-colors"
+            placeholder="Buscar número (ej: 023)..."
+            className="w-full rounded-2xl bg-slate-800/90 pl-10 pr-9 py-2.5 text-sm text-white placeholder-slate-400 border border-slate-700 focus:border-indigo-500 focus:outline-none transition-colors"
           />
           {searchQuery && (
             <button
@@ -78,7 +78,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <button
             onClick={onPickRandom}
             disabled={stats.disponibles === 0}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 hover:from-amber-300 hover:to-yellow-400 disabled:opacity-50 px-4 py-2.5 text-xs sm:text-sm font-black text-slate-950 transition-all shadow-lg shadow-amber-500/20 cursor-pointer disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 px-4 py-2.5 text-xs sm:text-sm font-bold text-slate-950 transition-all shadow-md shadow-amber-500/10 cursor-pointer disabled:cursor-not-allowed"
           >
             <Dice5 className="h-4 w-4" />
             <span className="hidden sm:inline">Número al Azar</span>
@@ -88,7 +88,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           <button
             onClick={onRefresh}
             disabled={isRefreshing}
-            className="flex items-center justify-center gap-2 rounded-2xl bg-[#1f190e] hover:bg-[#2a2213] disabled:opacity-50 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-amber-100 border border-amber-500/30 transition-colors cursor-pointer"
+            className="flex items-center justify-center gap-2 rounded-2xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 px-3.5 py-2.5 text-xs sm:text-sm font-medium text-slate-200 border border-slate-700 transition-colors cursor-pointer"
           >
             <RefreshCw className={`h-4 w-4 text-emerald-400 ${isRefreshing ? 'animate-spin' : ''}`} />
             <span className="hidden md:inline">
@@ -99,14 +99,14 @@ export const FilterBar: React.FC<FilterBarProps> = ({
       </div>
 
       {/* Row 2: Filtros Públicos (Solo Todas, Disponibles y Ocupadas) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-amber-500/20">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-slate-800">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => onStatusFilterChange('Todas')}
             className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               statusFilter === 'Todas'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'bg-[#1f190e] text-amber-200/80 hover:bg-[#2a2213] border border-amber-500/20'
+                ? 'bg-indigo-600 text-white shadow-sm'
+                : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
             }`}
           >
             Todas ({stats.total})
@@ -116,8 +116,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             onClick={() => onStatusFilterChange('Disponible')}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               statusFilter === 'Disponible'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                : 'bg-[#0e1e16] text-emerald-400 hover:bg-[#13291e] border border-emerald-500/30'
+                ? 'bg-emerald-600 text-white shadow-sm'
+                : 'bg-slate-800 text-emerald-400 hover:bg-slate-700'
             }`}
           >
             <CheckCircle2 className="h-3.5 w-3.5" />
@@ -128,8 +128,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             onClick={() => onStatusFilterChange('Ocupadas')}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               statusFilter === 'Ocupadas'
-                ? 'bg-amber-700 text-white shadow-sm'
-                : 'bg-[#1a150c] text-amber-200/70 hover:bg-[#251e12] border border-amber-500/20'
+                ? 'bg-slate-700 text-white shadow-sm'
+                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
             }`}
           >
             <Lock className="h-3.5 w-3.5" />
@@ -137,12 +137,12 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           </button>
         </div>
 
-        <label className="flex items-center gap-2 text-xs text-amber-200/70 cursor-pointer select-none self-end sm:self-auto">
+        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer select-none self-end sm:self-auto">
           <input
             type="checkbox"
             checked={autoRefresh}
             onChange={(e) => onToggleAutoRefresh(e.target.checked)}
-            className="rounded border-amber-500/40 bg-[#0e0b06] text-amber-500 h-4 w-4"
+            className="rounded border-slate-700 bg-slate-800 text-indigo-600 h-4 w-4"
           />
           <span>Auto-recargar cada 15s</span>
         </label>
@@ -150,7 +150,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
 
       {/* Row 3: Range Selector Buttons */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-1 scrollbar-none text-xs">
-        <span className="text-amber-400/80 font-bold uppercase tracking-wider text-[11px] mr-1 shrink-0">
+        <span className="text-slate-500 font-bold uppercase tracking-wider text-[11px] mr-1 shrink-0">
           Rango:
         </span>
         {RANGES.map((r) => (
@@ -159,8 +159,8 @@ export const FilterBar: React.FC<FilterBarProps> = ({
             onClick={() => onRangeFilterChange(r.id)}
             className={`px-2.5 py-1 rounded-lg font-mono text-xs whitespace-nowrap transition-all cursor-pointer ${
               rangeFilter === r.id
-                ? 'bg-amber-500/25 text-amber-200 border border-amber-400/50 font-bold shadow-sm'
-                : 'bg-[#1a150c]/80 text-amber-200/60 hover:text-amber-100 hover:bg-[#251e12] border border-amber-500/15'
+                ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 font-bold'
+                : 'bg-slate-800/60 text-slate-400 hover:text-slate-200 hover:bg-slate-800 border border-transparent'
             }`}
           >
             {r.label}
