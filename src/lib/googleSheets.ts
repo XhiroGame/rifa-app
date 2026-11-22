@@ -565,7 +565,13 @@ export async function payMultipleCuotasInGoogleSheets(
         .map((s: string) => s.trim())
         .filter((s: string) => s && !/^Cuota \d+/i.test(s) && !/^En revisión$/i.test(s) && !/^Aprobada$/i.test(s))
         .join(' | ');
-      const cuotaNota = `Cuota ${it.mes} (${MESES_NOMBRES[it.mes - 1]}): Ref ${receiptData.referencia}${groupTag} | En revisión`;
+      const montoTotalComprobante = receiptData.montoTotal || normalizedItems.length * CUOTA_PRECIO;
+      const montoPorBoleta = Math.round(montoTotalComprobante / normalizedItems.length);
+      const montoTag =
+        montoPorBoleta !== CUOTA_PRECIO
+          ? ` [Abono $${montoPorBoleta.toLocaleString('es-CO')}]`
+          : '';
+      const cuotaNota = `Cuota ${it.mes} (${MESES_NOMBRES[it.mes - 1]}): Ref ${receiptData.referencia}${montoTag}${groupTag} | En revisión`;
       const notas = baseReferido ? `${baseReferido} | ${cuotaNota}` : cuotaNota;
 
       const prevColD = (row[3] || '').toString().trim();
@@ -675,15 +681,34 @@ export async function setCuotaAdminAction(
     const colLetter = String.fromCharCode(71 + (mes - 1));
 
     if (action === 'approve') {
-      cuotasPagadas = Math.max(cuotasPagadas, mes);
-      const totalAbonado = cuotasPagadas * CUOTA_PRECIO;
-      const nuevoEstado = cuotasPagadas >= 12 ? 'Completada' : cuotasPagadas >= MES_ACTUAL_RIFA ? 'Al día' : 'En mora';
+      const notaActual = (row[20] || '').toString();
+      const prevTotalAbonado = parseInt((row[5] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
+      const abonoMatch = notaActual.match(/\[Abono \$([\d.,]+)\]/i);
+      const abonoParcialMonto = abonoMatch
+        ? parseInt(abonoMatch[1].replace(/\D/g, ''), 10) || CUOTA_PRECIO
+        : CUOTA_PRECIO;
+
+      let totalAbonado = prevTotalAbonado + abonoParcialMonto;
+      let nuevoEstadoMes = 'Pagado';
+
+      if (abonoMatch && totalAbonado < mes * CUOTA_PRECIO) {
+        // Es un abono parcial que aún no completa los $100.000 de esta cuota
+        nuevoEstadoMes = 'Pendiente';
+        cuotasPagadas = Math.floor(totalAbonado / CUOTA_PRECIO);
+      } else {
+        cuotasPagadas = Math.max(cuotasPagadas, mes, Math.floor(totalAbonado / CUOTA_PRECIO));
+        totalAbonado = Math.max(totalAbonado, cuotasPagadas * CUOTA_PRECIO);
+        nuevoEstadoMes = 'Pagado';
+      }
+
+      const nuevoEstado =
+        cuotasPagadas >= 12 ? 'Completada' : cuotasPagadas >= MES_ACTUAL_RIFA ? 'Al día' : 'En mora';
 
       await sheets.spreadsheets.values.update({
         spreadsheetId: SHEET_ID,
         range: `'${SHEET_TAB_NAME}'!${colLetter}${rowIndex}`,
         valueInputOption: 'USER_ENTERED',
-        requestBody: { values: [['Pagado']] },
+        requestBody: { values: [[nuevoEstadoMes]] },
       });
 
       await sheets.spreadsheets.values.update({
@@ -695,10 +720,9 @@ export async function setCuotaAdminAction(
         },
       });
 
-      // Actualizar columna Notas (U) para reflejar que la cuota ya fue aprobada
-      const notaActual = (row[20] || '').toString();
+      // Actualizar columna Notas (U) para reflejar que la cuota o abono parcial ya fue aprobado
       const notaAprobada = notaActual.includes('En revisión')
-        ? notaActual.replace(/En revisión/gi, 'Aprobada')
+        ? notaActual.replace(/En revisión/gi, nuevoEstadoMes === 'Pagado' ? 'Aprobada' : `Abono aprobado (Total: $${totalAbonado.toLocaleString('es-CO')})`)
         : `Cuota ${mes} (${MESES_NOMBRES[mes - 1]}): Aprobada`;
 
       await sheets.spreadsheets.values.update({

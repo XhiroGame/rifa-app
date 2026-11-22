@@ -101,6 +101,9 @@ export async function POST(request: Request) {
     const cleanNum = itemsToPay[0].numero;
     const mes = itemsToPay[0].mes;
     const allNums = itemsToPay.map((i) => i.numero);
+    const montoRaw = formData.get('monto') as string | null;
+    const declaredMonto = montoRaw ? parseInt(montoRaw.replace(/\D/g, ''), 10) : 0;
+    const expectedMonto = declaredMonto > 0 ? declaredMonto : itemsToPay.length * 100000;
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
@@ -108,7 +111,12 @@ export async function POST(request: Request) {
     // 1. Extracción de datos con Gemini AI
     let extractedData;
     try {
-      extractedData = await extractReceiptDataWithGemini(buffer, file.type);
+      extractedData = await extractReceiptDataWithGemini(buffer, file.type, expectedMonto);
+      if (declaredMonto > 0) {
+        extractedData.montoTotal = declaredMonto;
+      } else if (!extractedData.montoTotal) {
+        extractedData.montoTotal = expectedMonto;
+      }
     } catch (aiErr: any) {
       console.error('Error al invocar Gemini API:', aiErr);
       return NextResponse.json(

@@ -74,6 +74,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [pin, setPin] = useState(initialPin || '');
   const [showPin, setShowPin] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
+  const [paymentMode, setPaymentMode] = useState<'full' | 'custom'>('full');
+  const [customAmountStr, setCustomAmountStr] = useState('');
 
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -104,6 +106,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMessage(null);
       setIsSubmitting(false);
       setLoadingStep('');
+      setPaymentMode('full');
+      setCustomAmountStr('');
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
@@ -128,8 +132,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const activeTickets =
     selectedTickets && selectedTickets.length > 0 ? selectedTickets : [ticket];
   const isMultiPay = activeTickets.length > 1;
-  const totalAmount = activeTickets.length * 100000;
-  const totalAmountFormatted = `$${totalAmount.toLocaleString('es-CO')} COP`;
+  const standardTotalAmount = activeTickets.length * 100000;
+  const standardTotalFormatted = `$${standardTotalAmount.toLocaleString('es-CO')} COP`;
+  const parsedCustomAmount = parseInt(customAmountStr.replace(/\D/g, ''), 10) || 0;
+  const totalAmount = paymentMode === 'full' ? standardTotalAmount : parsedCustomAmount;
+  const totalAmountFormatted = `$${(totalAmount || 0).toLocaleString('es-CO')} COP`;
   const activeNumsLabel = activeTickets.map((t) => `#${t.numero}`).join(', ');
 
   const nombreMes = MESES_NOMBRES[mes - 1] || `Mes ${mes}`;
@@ -210,6 +217,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       setErrorMessage('Debes ingresar una clave única hexadecimal válida de 4 cifras (0-9, A-F, ej: 7B2A).');
       return;
     }
+    if (paymentMode === 'custom' && parsedCustomAmount < 10000) {
+      setErrorMessage('Por favor ingresa un valor válido a abonar (mínimo $10.000 COP).');
+      return;
+    }
     if (!file) {
       setErrorMessage('Debes adjuntar la imagen del comprobante de pago (JPG o PNG).');
       return;
@@ -233,6 +244,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         )
       );
       formData.append('mes', mes.toString());
+      formData.append('monto', totalAmount.toString());
       formData.append('nombre', nombre.trim());
       formData.append('whatsapp', cleanWhatsapp);
       formData.append('pin', cleanPin);
@@ -660,6 +672,108 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       >
                         {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Selección del Valor a Pagar (Primera opción: $100.000 COP por boleta, Segunda opción: Otro valor) */}
+              <div className="rounded-2xl bg-slate-800/60 border border-slate-700/80 p-3.5 space-y-2.5">
+                <label className="block text-xs font-bold text-slate-200">
+                  Valor a pagar en este comprobante <span className="text-rose-400">*</span>
+                </label>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {/* Primera opción por defecto: $100.000 COP (o total de boletas x $100.000) */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMode('full');
+                      setErrorMessage(null);
+                    }}
+                    className={`flex flex-col items-start justify-center p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      paymentMode === 'full'
+                        ? 'bg-emerald-500/20 border-emerald-400 text-white ring-1 ring-emerald-400/50 shadow-md'
+                        : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">
+                        {isMultiPay ? `Total (${activeTickets.length} boletas)` : 'Cuota Completa'}
+                      </span>
+                      {paymentMode === 'full' && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />}
+                    </div>
+                    <span className="font-mono text-base font-black text-white mt-0.5">
+                      {standardTotalFormatted}
+                    </span>
+                  </button>
+
+                  {/* Segunda opción: Otro valor personalizado */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMode('custom');
+                      if (!customAmountStr) setCustomAmountStr('50000');
+                      setErrorMessage(null);
+                    }}
+                    className={`flex flex-col items-start justify-center p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                      paymentMode === 'custom'
+                        ? 'bg-amber-500/20 border-amber-400 text-white ring-1 ring-amber-400/50 shadow-md'
+                        : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
+                        Otro Valor / Abono
+                      </span>
+                      {paymentMode === 'custom' && <CheckCircle2 className="h-4 w-4 text-amber-400 shrink-0" />}
+                    </div>
+                    <span className="text-xs font-semibold text-slate-300 mt-0.5">
+                      Escribir monto diferente
+                    </span>
+                  </button>
+                </div>
+
+                {paymentMode === 'custom' && (
+                  <div className="pt-1 space-y-2 animate-in fade-in duration-150">
+                    <div className="relative">
+                      <Coins className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-400" />
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        required
+                        value={
+                          parsedCustomAmount > 0
+                            ? parsedCustomAmount.toLocaleString('es-CO')
+                            : ''
+                        }
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
+                          setCustomAmountStr(digits);
+                        }}
+                        placeholder="Ej: 50.000"
+                        className="w-full rounded-xl bg-slate-900 pl-10 pr-16 py-2.5 text-sm font-mono font-bold text-amber-300 placeholder-slate-500 border border-amber-500/50 focus:outline-none focus:border-amber-400"
+                      />
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-400">
+                        COP
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[10px] text-slate-400 mr-1">Valores rápidos:</span>
+                      {[50000, 60000, 75000, 150000, 200000].map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setCustomAmountStr(val.toString())}
+                          className={`px-2 py-0.5 rounded-lg font-mono text-[11px] font-bold border transition-colors cursor-pointer ${
+                            parsedCustomAmount === val
+                              ? 'bg-amber-500/25 text-amber-200 border-amber-400/50'
+                              : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'
+                          }`}
+                        >
+                          ${val.toLocaleString('es-CO')}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
