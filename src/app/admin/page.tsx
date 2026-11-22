@@ -33,7 +33,6 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { ReceiptZoomModal } from '@/components/ReceiptZoomModal';
-import { InstructionsModal } from '@/components/InstructionsModal';
 import { ApprovalWhatsAppModal } from '@/components/ApprovalWhatsAppModal';
 import { getWhatsAppUrl, buildOverdueWhatsAppMessage } from '@/lib/whatsappMessages';
 
@@ -68,7 +67,6 @@ export default function AdminPage() {
   // Estados de acción de aprobación/rechazo
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
-  const [showInstructions, setShowInstructions] = useState(false);
   const [approvalSuccessData, setApprovalSuccessData] = useState<{
     ticket: Ticket;
     mes: number;
@@ -409,19 +407,9 @@ export default function AdminPage() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowInstructions(true)}
-              className="flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-200 border border-slate-700 transition-colors shadow-sm cursor-pointer"
-              title="Guía de configuración de Google Sheets"
-            >
-              <Sheet className="h-3.5 w-3.5 text-emerald-400" />
-              <span className="hidden md:inline">Guía Google Sheets</span>
-              <HelpCircle className="h-3.5 w-3.5 text-slate-400" />
-            </button>
-
-            <button
               onClick={() => fetchAdminTickets(false)}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 border border-slate-700 transition-colors"
+              className="flex items-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 px-3 py-1.5 text-xs font-medium text-slate-300 border border-slate-700 transition-colors cursor-pointer"
             >
               <RefreshCw className={`h-3.5 w-3.5 text-emerald-400 ${isRefreshing ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refrescar</span>
@@ -999,12 +987,6 @@ export default function AdminPage() {
           }
         />
       )}
-
-      {/* Modal con la Guía técnica para conectar Google Sheets */}
-      <InstructionsModal
-        isOpen={showInstructions}
-        onClose={() => setShowInstructions(false)}
-      />
 
       {/* Modal para enviar confirmación oficial y PIN al WhatsApp del cliente */}
       <ApprovalWhatsAppModal
