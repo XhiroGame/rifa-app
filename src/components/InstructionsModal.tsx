@@ -30,7 +30,7 @@ NEXT_PUBLIC_RAFFLE_PRIZE="Primer Premio: $5,000,000 COP o iPhone 15 Pro Max"
 NEXT_PUBLIC_TICKET_PRICE="$25,000 COP"
 NEXT_PUBLIC_DRAW_DATE="20 de Diciembre de 2026"
 NEXT_PUBLIC_LOTTERY_NAME="Lotería de Medellín (Últimas 3 cifras)"
-NEXT_PUBLIC_WHATSAPP_NUMBER="573001234567"`;
+NEXT_PUBLIC_WHATSAPP_NUMBER="573135982641"`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">

@@ -18,6 +18,9 @@ export async function GET() {
       ? '¡Elige tu número de la suerte del 000 al 999 y paga tu cuota mensual de $100.000 COP!'
       : rawSub;
 
+    const rawWa = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').trim();
+    const whatsappNumber = !rawWa || rawWa === '573001234567' ? '573135982641' : rawWa;
+
     const config: RaffleConfig = {
       title: process.env.NEXT_PUBLIC_RAFFLE_TITLE || 'Rifas e Inversiones La Calidosa',
       subtitle,
@@ -27,7 +30,7 @@ export async function GET() {
       mesActual: MES_ACTUAL_RIFA,
       drawDate: process.env.NEXT_PUBLIC_DRAW_DATE || 'Noviembre de 2027',
       lotteryName: process.env.NEXT_PUBLIC_LOTTERY_NAME || 'Lotería de Medellín (Últimas 3 cifras)',
-      whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '573001234567',
+      whatsappNumber,
       isDemo: !isGoogleSheetsConfigured(),
     };
 

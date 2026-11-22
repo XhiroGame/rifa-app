@@ -31,7 +31,7 @@ export default function Home() {
     mesActual: 1,
     drawDate: 'Noviembre de 2027',
     lotteryName: 'Lotería de Medellín (Últimas 3 cifras)',
-    whatsappNumber: '573001234567',
+    whatsappNumber: '573135982641',
     isDemo: true,
   });
 
