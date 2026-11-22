@@ -1,21 +1,25 @@
 import { NextResponse } from 'next/server';
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const rawUser = (process.env.ADMIN_USERNAME || '').trim();
+const ADMIN_USERNAME = !rawUser || rawUser === 'admin' ? 'calidosa_admin' : rawUser;
+
+const rawPass = (process.env.ADMIN_PASSWORD || '').trim();
+const ADMIN_PASSWORD = !rawPass || rawPass === 'admin123' ? 'Calidosa$2027#Rifa!' : rawPass;
 
 export async function POST(request: Request) {
   try {
-    const { password } = await request.json();
+    const { username, password } = await request.json();
 
-    if (!password) {
+    if (!username || !password) {
       return NextResponse.json(
-        { success: false, message: 'La contraseña es requerida.' },
+        { success: false, message: 'Debes ingresar usuario y contraseña.' },
         { status: 400 }
       );
     }
 
-    if (password !== ADMIN_PASSWORD) {
+    if (username.trim() !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
       return NextResponse.json(
-        { success: false, message: 'Contraseña de administrador incorrecta.' },
+        { success: false, message: 'Credenciales incorrectas. Verifica tu usuario y contraseña.' },
         { status: 401 }
       );
     }
@@ -28,8 +32,8 @@ export async function POST(request: Request) {
     // Establecer cookie de sesión para el panel de administración
     response.cookies.set({
       name: 'rifa_admin_auth',
-      value: 'authenticated',
-      httpOnly: false, // Permitir verificación en cliente
+      value: 'authenticated_v2',
+      httpOnly: false,
       path: '/',
       maxAge: 60 * 60 * 24 * 7, // 7 días
       sameSite: 'lax',

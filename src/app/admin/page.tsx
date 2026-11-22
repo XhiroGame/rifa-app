@@ -29,6 +29,7 @@ import {
   HelpCircle,
   MapPin,
   FileText,
+  EyeOff,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ReceiptZoomModal } from '@/components/ReceiptZoomModal';
@@ -38,7 +39,9 @@ import { getWhatsAppUrl, buildOverdueWhatsAppMessage } from '@/lib/whatsappMessa
 
 export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -74,7 +77,7 @@ export default function AdminPage() {
 
   // Verificar sesión existente en localStorage
   useEffect(() => {
-    const authStored = localStorage.getItem('rifa_admin_logged');
+    const authStored = localStorage.getItem('rifa_admin_session_v2');
     if (authStored === 'true') {
       setIsAuthenticated(true);
     }
@@ -117,17 +120,17 @@ export default function AdminPage() {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ username: username.trim(), password }),
       });
 
       const data = await res.json();
 
       if (data.success) {
         setIsAuthenticated(true);
-        localStorage.setItem('rifa_admin_logged', 'true');
+        localStorage.setItem('rifa_admin_session_v2', 'true');
         fetchAdminTickets();
       } else {
-        setLoginError(data.message || 'Contraseña incorrecta.');
+        setLoginError(data.message || 'Usuario o contraseña incorrectos.');
       }
     } catch (err) {
       setLoginError('Error de conexión al iniciar sesión.');
@@ -138,6 +141,9 @@ export default function AdminPage() {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    setUsername('');
+    setPassword('');
+    localStorage.removeItem('rifa_admin_session_v2');
     localStorage.removeItem('rifa_admin_logged');
   };
 
@@ -286,20 +292,47 @@ export default function AdminPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-1.5">
-                Contraseña de Administrador
+                Usuario Administrador
               </label>
-              <input
-                type="password"
-                required
-                autoFocus
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Ingresa la contraseña..."
-                className="w-full rounded-2xl bg-slate-800 px-4 py-2.5 text-sm text-white placeholder-slate-500 border border-slate-700 focus:outline-none focus:border-indigo-500"
-              />
-              <p className="text-[11px] text-slate-500 mt-1.5">
-                * Por defecto: <code className="text-slate-300">admin123</code> (configurable en ADMIN_PASSWORD)
-              </p>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input
+                  type="text"
+                  required
+                  autoFocus
+                  autoComplete="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Ingresa tu usuario..."
+                  className="w-full rounded-2xl bg-slate-800 pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 border border-slate-700 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                Contraseña de Acceso
+              </label>
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Ingresa tu contraseña..."
+                  className="w-full rounded-2xl bg-slate-800 pl-10 pr-10 py-2.5 text-sm text-white placeholder-slate-500 border border-slate-700 focus:outline-none focus:border-indigo-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                  title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
 
             <button
@@ -307,7 +340,7 @@ export default function AdminPage() {
               disabled={isLoggingIn}
               className="w-full flex items-center justify-center gap-2 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 py-3 text-sm font-bold text-white transition-colors cursor-pointer shadow-lg shadow-indigo-600/20"
             >
-              {isLoggingIn ? <span>Validando...</span> : <span>Ingresar al Panel</span>}
+              {isLoggingIn ? <span>Validando credenciales...</span> : <span>Ingresar al Panel</span>}
             </button>
           </form>
 

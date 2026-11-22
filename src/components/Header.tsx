@@ -18,20 +18,6 @@ export const Header: React.FC<HeaderProps> = ({ config, isDemo }) => {
       <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col gap-6">
-        {/* Top bar with Admin button */}
-        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-slate-700/50 pb-4">
-          <div className="flex items-center gap-2">
-            <Link
-              href="/admin"
-              className="flex items-center gap-1.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 px-3 py-1.5 text-xs font-bold text-indigo-300 border border-indigo-500/40 transition-colors shadow-sm"
-              title="Panel del Administrador"
-            >
-              <Lock className="h-3.5 w-3.5" />
-              <span>Panel Admin</span>
-            </Link>
-          </div>
-        </div>
-
         {/* Main Title & Subtitle */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
           <div className="space-y-2">
