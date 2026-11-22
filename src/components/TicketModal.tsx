@@ -174,9 +174,9 @@ export const TicketModal: React.FC<TicketModalProps> = ({
             <img
               src="/icon-calidosa.png"
               alt="La Calidosa"
-              className="h-6 w-6 rounded-full bg-white p-0.5 ring-1 ring-amber-400/50 object-contain"
+              className="h-7 w-7 rounded-full bg-amber-500/15 p-0.5 ring-1 ring-amber-400/50 object-contain"
             />
-            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
               Rifa e Inversiones La Calidosa
             </span>
           </div>

@@ -268,14 +268,14 @@ export default function AdminPage() {
   // Pantalla de Login
   if (!isAuthenticated) {
     return (
-      <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
-        <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-8 shadow-2xl">
+      <main className="min-h-screen bg-gala-raffle text-slate-100 flex items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-3xl bg-[#141009]/95 border border-amber-500/35 p-8 shadow-2xl">
           <div className="text-center mb-6">
-            <div className="mx-auto inline-flex items-center justify-center rounded-2xl bg-white p-3 shadow-xl shadow-amber-500/15 ring-2 ring-amber-400/50 mb-3">
+            <div className="mx-auto inline-flex items-center justify-center rounded-2xl bg-gradient-to-b from-amber-500/15 via-amber-950/30 to-black/50 p-3.5 shadow-xl shadow-amber-500/15 border border-amber-400/40 mb-3">
               <img
                 src="/logo-calidosa.png"
                 alt="Rifa e Inversiones La Calidosa"
-                className="h-20 w-auto object-contain"
+                className="h-20 w-auto object-contain drop-shadow-[0_4px_12px_rgba(245,158,11,0.35)]"
               />
             </div>
             <h1 className="text-2xl font-black text-white">Administración de la Rifa</h1>
@@ -362,7 +362,7 @@ export default function AdminPage() {
 
   // Dashboard de Administración
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 antialiased pb-20">
+    <main className="min-h-screen bg-gala-raffle text-slate-100 antialiased pb-20">
       {/* Toast Notification */}
       {toastMessage && (
         <div
@@ -385,7 +385,7 @@ export default function AdminPage() {
       <header className="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 py-3.5">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1 shadow-md ring-1 ring-amber-400/50 shrink-0">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/15 p-1 shadow-md border border-amber-400/40 shrink-0">
               <img
                 src="/icon-calidosa.png"
                 alt="La Calidosa"

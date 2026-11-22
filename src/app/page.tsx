@@ -181,7 +181,7 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100 antialiased selection:bg-indigo-500 selection:text-white pb-28">
+    <main className="min-h-screen bg-gala-raffle text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950 pb-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 sm:pt-10">
         {/* Header Hero */}
         <Header
@@ -243,16 +243,16 @@ export default function Home() {
       </div>
 
       {/* Footer */}
-      <footer className="mt-16 border-t border-slate-800/80 py-8 text-center text-xs text-slate-500">
-        <div className="mx-auto mb-3 inline-flex items-center justify-center rounded-xl bg-white p-1.5 shadow-md ring-1 ring-amber-400/40">
+      <footer className="mt-16 border-t border-amber-500/20 py-8 text-center text-xs text-amber-200/60">
+        <div className="mx-auto mb-3 inline-flex items-center justify-center rounded-2xl bg-gradient-to-b from-amber-500/15 to-black/40 p-2.5 shadow-md border border-amber-400/35">
           <img
             src="/logo-calidosa.png"
             alt="Rifa e Inversiones La Calidosa"
-            className="h-11 w-auto object-contain"
+            className="h-12 w-auto object-contain drop-shadow-[0_2px_8px_rgba(245,158,11,0.3)]"
           />
         </div>
-        <p className="font-semibold text-slate-300">Rifas e Inversiones La Calidosa</p>
-        <p className="mt-1 text-slate-600">
+        <p className="font-bold text-amber-200">Rifas e Inversiones La Calidosa</p>
+        <p className="mt-1 text-amber-200/50">
           Plan 12 Meses (000 al 999) • Cuotas de $100.000 COP • Noviembre 2026 - Noviembre 2027
         </p>
         <div className="mt-3">

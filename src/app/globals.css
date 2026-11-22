@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0c0905;
+  --foreground: #f8f5ee;
 }
 
 @theme inline {
@@ -12,15 +12,20 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
+  background-color: #0c0905;
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Fondo Gala Dorada & Esmeralda para Sistema de Rifas y Sorteos */
+.bg-gala-raffle {
+  background-color: #0c0905;
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(234, 179, 8, 0.22), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 90% 25%, rgba(16, 185, 129, 0.13), transparent 70%),
+    radial-gradient(ellipse 60% 50% at 10% 70%, rgba(217, 119, 6, 0.12), transparent 70%),
+    radial-gradient(rgba(245, 158, 11, 0.08) 1px, transparent 1px);
+  background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px;
+  background-attachment: fixed;
 }
