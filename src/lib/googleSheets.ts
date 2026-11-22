@@ -42,8 +42,12 @@ function getGoogleSheetsClient() {
   return google.sheets({ version: 'v4', auth });
 }
 
-export function normalizeGeneralStatus(raw: string | undefined, cuotasPagadas: number): TicketStatus {
-  if (!raw) return 'Disponible';
+export function normalizeGeneralStatus(
+  raw: string | undefined,
+  cuotasPagadas: number,
+  hasNombre = false
+): TicketStatus {
+  if (!raw) return hasNombre ? (cuotasPagadas >= MES_ACTUAL_RIFA ? 'Al día' : 'En mora') : 'Disponible';
   const clean = raw.trim().toLowerCase();
   if (clean === 'completada' || clean === 'completado' || cuotasPagadas >= 12) return 'Completada';
   if (clean === 'en revisión' || clean === 'en revision' || clean === 'revision') return 'En revisión';
@@ -51,7 +55,7 @@ export function normalizeGeneralStatus(raw: string | undefined, cuotasPagadas: n
   if (clean === 'al día' || clean === 'al dia') return 'Al día';
   if (clean === 'disponible' || clean === 'libre') return 'Disponible';
 
-  if (cuotasPagadas > 0) {
+  if (cuotasPagadas > 0 || hasNombre) {
     return cuotasPagadas >= MES_ACTUAL_RIFA ? 'Al día' : 'En mora';
   }
   return 'Disponible';
@@ -113,12 +117,17 @@ export async function getTickets(): Promise<{
 
       const pagadasPorColumnas = cuotas.filter((c) => c.estado === 'Pagado').length;
       const cuotasPagadas = Math.max(cuotasPagadasCol, pagadasPorColumnas);
-      const totalAbonado = cuotasPagadas * CUOTA_PRECIO;
+      const rawTotalStr = (row[5]?.toString() || '').replace(/[^\d]/g, '');
+      const parsedTotalAbonado = rawTotalStr ? parseInt(rawTotalStr, 10) : 0;
+      const totalAbonado = Math.max(
+        isNaN(parsedTotalAbonado) ? 0 : parsedTotalAbonado,
+        cuotasPagadas * CUOTA_PRECIO
+      );
       const cuotaEnRevIdx = cuotas.findIndex((c) => c.estado === 'En revisión');
       const cuotaEnRevision = cuotaEnRevIdx >= 0 ? cuotaEnRevIdx + 1 : undefined;
       const estado = cuotaEnRevision
         ? 'En revisión'
-        : normalizeGeneralStatus(row[1]?.toString(), cuotasPagadas);
+        : normalizeGeneralStatus(row[1]?.toString(), cuotasPagadas, Boolean(nombre));
 
       const referencia = row[18]?.toString().trim() || undefined;
       const comprobanteUrl = row[19]?.toString().trim() || undefined;
@@ -314,15 +323,41 @@ export async function payCuotaInGoogleSheets(
 
     let claveAsignada = storedPin;
 
-    // Si la boleta estaba libre, generar o asignar clave única hexadecimal
+    // Si la boleta estaba libre, generar o asignar clave única hexadecimal (evitando notación científica)
     if (estadoActual === 'disponible') {
-      claveAsignada = /^[0-9A-F]{4}$/i.test(cleanPin)
-        ? cleanPin
-        : Math.floor(Math.random() * 0x10000).toString(16).toUpperCase().padStart(4, '0');
+      if (/^[0-9A-F]{4}$/i.test(cleanPin) && !/^\d+E\d+$/i.test(cleanPin)) {
+        claveAsignada = cleanPin;
+      } else {
+        while (true) {
+          const candidate = Math.floor(Math.random() * 0x10000).toString(16).toUpperCase().padStart(4, '0');
+          if (!/^\d+E\d+$/i.test(candidate)) {
+            claveAsignada = candidate;
+            break;
+          }
+        }
+      }
     }
 
     const colLetter = String.fromCharCode(71 + (mesACobrar - 1));
-    const notas = `Cuota ${mesACobrar} (${MESES_NOMBRES[mesACobrar - 1]}): Ref ${receiptData.referencia} | En revisión`;
+    const prevNotas = (row[20] || '').toString().trim();
+    const baseReferido = prevNotas
+      .split('|')
+      .map((s: string) => s.trim())
+      .filter((s: string) => s && !/^Cuota \d+/i.test(s))
+      .join(' | ');
+    const cuotaNota = `Cuota ${mesACobrar} (${MESES_NOMBRES[mesACobrar - 1]}): Ref ${receiptData.referencia} | En revisión`;
+    const notas = baseReferido ? `${baseReferido} | ${cuotaNota}` : cuotaNota;
+
+    const prevColD = (row[3] || '').toString().trim();
+    const prevHasPhone = /\d{7,}/.test(prevColD);
+    const finalColD = telefono
+      ? prevColD && !prevHasPhone
+        ? `${telefono} (${prevColD})`
+        : telefono
+      : prevColD;
+
+    const prevTotalAbonado = parseInt((row[5] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
+    const currentTotalAbonado = Math.max(prevTotalAbonado, cuotasPagadas * CUOTA_PRECIO);
 
     // 1. Actualizar estado general y datos de contacto
     await sheets.spreadsheets.values.update({
@@ -335,9 +370,9 @@ export async function payCuotaInGoogleSheets(
             paddedNum,
             'En revisión',
             nombre || row[2] || '',
-            telefono || row[3] || '',
+            finalColD,
             cuotasPagadas,
-            cuotasPagadas * CUOTA_PRECIO,
+            currentTotalAbonado,
           ],
         ],
       },

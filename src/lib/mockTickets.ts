@@ -2,22 +2,22 @@ import { Ticket, TicketStatus, RaffleStats, Cuota, CuotaStatus } from '@/types/t
 import { ExtractedReceiptData } from './geminiReceipt';
 
 export const MESES_NOMBRES = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
+  'Noviembre 2026',
+  'Diciembre 2026',
+  'Enero 2027',
+  'Febrero 2027',
+  'Marzo 2027',
+  'Abril 2027',
+  'Mayo 2027',
+  'Junio 2027',
+  'Julio 2027',
+  'Agosto 2027',
+  'Septiembre 2027',
+  'Octubre 2027',
 ];
 
 export const CUOTA_PRECIO = 100000; // $100,000 COP por mes
-export const MES_ACTUAL_RIFA = 11; // Noviembre (Mes 11 de 12)
+export const MES_ACTUAL_RIFA = 1; // Noviembre 2026 (Mes 1 de 12)
 
 export function create12Cuotas(cuotasPagadas: number, cuotaEnRevision?: number): Cuota[] {
   return MESES_NOMBRES.map((nombreMes, index) => {
@@ -47,12 +47,15 @@ export function create12Cuotas(cuotasPagadas: number, cuotaEnRevision?: number):
   });
 }
 
-// Generador de clave única hexadecimal de 4 cifras (0-9, A-F)
+// Generador de clave única hexadecimal de 4 cifras (0-9, A-F), evitando notación científica (ej: 40E6)
 export function generateHexPin(): string {
-  return Math.floor(Math.random() * 0x10000)
-    .toString(16)
-    .toUpperCase()
-    .padStart(4, '0');
+  while (true) {
+    const pin = Math.floor(Math.random() * 0x10000)
+      .toString(16)
+      .toUpperCase()
+      .padStart(4, '0');
+    if (!/^\d+E\d+$/.test(pin)) return pin;
+  }
 }
 
 // Generador de boletas en memoria para modo demo

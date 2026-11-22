@@ -42,7 +42,8 @@ export const ApprovalWhatsAppModal: React.FC<ApprovalWhatsAppModalProps> = ({
   if (!isOpen || !ticket) return null;
 
   const pin = ticket.claveSeguridad || 'N/A';
-  const whatsappNumber = ticket.telefono || '';
+  const rawContact = ticket.telefono || '';
+  const whatsappNumber = /\d{10}/.test(rawContact.replace(/\D/g, '')) ? rawContact.replace(/\D/g, '') : '';
   const messageText = buildApprovalWhatsAppMessage({
     nombre: ticket.nombre,
     numero: ticket.numero,
@@ -117,9 +118,9 @@ export const ApprovalWhatsAppModal: React.FC<ApprovalWhatsAppModalProps> = ({
             <div className="flex justify-between items-center text-slate-300">
               <span className="flex items-center gap-1.5 text-slate-400">
                 <Phone className="h-3.5 w-3.5" />
-                <span>Celular WhatsApp:</span>
+                <span>Ubicación / Celular:</span>
               </span>
-              <span className="font-mono text-emerald-300 font-semibold">{ticket.telefono || 'N/A'}</span>
+              <span className="font-mono text-emerald-300 font-semibold">{rawContact || 'N/A'}</span>
             </div>
 
             <div className="flex justify-between items-center text-slate-300">

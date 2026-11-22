@@ -25,7 +25,7 @@ export async function GET() {
       monthlyPrice,
       totalPrice: '$1,200,000 COP (12 cuotas)',
       mesActual: MES_ACTUAL_RIFA,
-      drawDate: process.env.NEXT_PUBLIC_DRAW_DATE || '20 de Diciembre de 2026',
+      drawDate: process.env.NEXT_PUBLIC_DRAW_DATE || 'Noviembre de 2027',
       lotteryName: process.env.NEXT_PUBLIC_LOTTERY_NAME || 'Lotería de Medellín (Últimas 3 cifras)',
       whatsappNumber: process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '573001234567',
       isDemo: !isGoogleSheetsConfigured(),

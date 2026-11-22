@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Ticket, TicketStatus, RaffleStats, TicketsApiResponse } from '@/types/ticket';
-import { MESES_NOMBRES } from '@/lib/mockTickets';
+import { MESES_NOMBRES, MES_ACTUAL_RIFA } from '@/lib/mockTickets';
 import {
   Lock,
   ShieldCheck,
@@ -27,6 +27,8 @@ import {
   Key,
   Sheet,
   HelpCircle,
+  MapPin,
+  FileText,
 } from 'lucide-react';
 import Link from 'next/link';
 import { ReceiptZoomModal } from '@/components/ReceiptZoomModal';
@@ -208,9 +210,10 @@ export default function AdminPage() {
         const query = searchQuery.trim().toLowerCase();
         const matchNum = t.numero.includes(query);
         const matchName = t.nombre?.toLowerCase().includes(query);
-        const matchTel = t.telefono?.includes(query);
+        const matchTel = t.telefono?.toLowerCase().includes(query);
         const matchRef = t.referencia?.toLowerCase().includes(query);
-        if (!matchNum && !matchName && !matchTel && !matchRef) return false;
+        const matchNotas = t.notas?.toLowerCase().includes(query);
+        if (!matchNum && !matchName && !matchTel && !matchRef && !matchNotas) return false;
       }
 
       return true;
@@ -520,7 +523,7 @@ export default function AdminPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar # (ej: 023), nombre, ref..."
+              placeholder="Buscar #, nombre, lugar, referido..."
               className="w-full rounded-xl bg-slate-800/90 pl-10 pr-3.5 py-2 text-xs text-white placeholder-slate-400 border border-slate-700 focus:outline-none focus:border-indigo-500"
             />
           </div>
@@ -564,7 +567,7 @@ export default function AdminPage() {
                           #{ticket.numero}
                         </span>
                         <span className="text-xs font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
-                          {ticket.cuotasPagadas}/12 Cuotas (${(ticket.cuotasPagadas * 100000).toLocaleString('es-CO')})
+                          {ticket.cuotasPagadas}/12 Cuotas (${(ticket.totalAbonado ?? ticket.cuotasPagadas * 100000).toLocaleString('es-CO')})
                         </span>
                       </div>
 
@@ -584,27 +587,44 @@ export default function AdminPage() {
                     </div>
 
                     {/* Datos del Participante */}
-                    {(ticket.nombre || ticket.telefono) && (
+                    {(ticket.nombre || ticket.telefono || ticket.notas) && (
                       <div className="rounded-2xl bg-slate-950/60 border border-slate-800 p-3 space-y-1.5 text-xs">
-                        <div className="flex items-center gap-2 text-white font-semibold">
-                          <User className="h-3.5 w-3.5 text-slate-400" />
-                          <span className="truncate">{ticket.nombre}</span>
-                        </div>
+                        {ticket.nombre && (
+                          <div className="flex items-center gap-2 text-white font-semibold">
+                            <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                            <span className="truncate">{ticket.nombre}</span>
+                          </div>
+                        )}
                         {ticket.telefono && (
-                          <div className="flex items-center justify-between text-slate-300">
-                            <span className="font-mono">{ticket.telefono}</span>
-                            <a
-                              href={`https://wa.me/${ticket.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
-                                ticket.estado === 'En mora'
-                                  ? `Hola ${ticket.nombre || ''}, te escribo de Rifas e Inversiones La Calidosa. Queremos recordarte que tienes pendiente tu cuota mensual de la boleta #${ticket.numero} ($100.000 COP). ¿Deseas hacer el abono hoy?`
-                                  : `Hola ${ticket.nombre || ''}, te contacto sobre tu boleta #${ticket.numero} de Rifas e Inversiones La Calidosa.`
-                              )}`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline"
-                            >
-                              Contactar WhatsApp
-                            </a>
+                          <div className="flex items-center justify-between text-slate-300 gap-2">
+                            <span className="flex items-center gap-1.5 font-mono truncate">
+                              {/\d{7,}/.test(ticket.telefono) ? (
+                                <Phone className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                              ) : (
+                                <MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                              )}
+                              <span className="truncate">{ticket.telefono}</span>
+                            </span>
+                            {/\d{10}/.test(ticket.telefono.replace(/\D/g, '')) && (
+                              <a
+                                href={`https://wa.me/${ticket.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                  ticket.estado === 'En mora'
+                                    ? `Hola ${ticket.nombre || ''}, te escribo de Rifas e Inversiones La Calidosa. Queremos recordarte que tienes pendiente tu cuota mensual de la boleta #${ticket.numero} ($100.000 COP). ¿Deseas hacer el abono hoy?`
+                                    : `Hola ${ticket.nombre || ''}, te contacto sobre tu boleta #${ticket.numero} de Rifas e Inversiones La Calidosa.`
+                                )}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline shrink-0"
+                              >
+                                Contactar WhatsApp
+                              </a>
+                            )}
+                          </div>
+                        )}
+                        {ticket.notas && (
+                          <div className="flex items-start gap-1.5 text-[11px] text-indigo-200/90 pt-1 border-t border-slate-800/80">
+                            <FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                            <span className="break-words">{ticket.notas}</span>
                           </div>
                         )}
                         {ticket.claveSeguridad && (
@@ -715,45 +735,50 @@ export default function AdminPage() {
                         </button>
                       </div>
                     ) : ticket.estado === 'En mora' ? (
-                      <a
-                        href={getWhatsAppUrl(
-                          ticket.telefono || '',
-                          buildOverdueWhatsAppMessage({
-                            nombre: ticket.nombre,
-                            numero: ticket.numero,
-                            cuotasPagadas: ticket.cuotasPagadas || 0,
-                            mesActual: 11,
-                            nombreMesActual: 'Noviembre',
-                          })
-                        )}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 py-2.5 px-3 text-xs font-bold text-slate-950 transition-colors shadow-md cursor-pointer"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        <span>Cobrar Mensualidad por WhatsApp</span>
-                      </a>
+                      /\d{10}/.test((ticket.telefono || '').replace(/\D/g, '')) ? (
+                        <a
+                          href={getWhatsAppUrl(
+                            ticket.telefono || '',
+                            buildOverdueWhatsAppMessage({
+                              nombre: ticket.nombre,
+                              numero: ticket.numero,
+                              cuotasPagadas: ticket.cuotasPagadas || 0,
+                              mesActual: MES_ACTUAL_RIFA,
+                              nombreMesActual: MESES_NOMBRES[MES_ACTUAL_RIFA - 1],
+                            })
+                          )}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="w-full flex items-center justify-center gap-2 rounded-xl bg-amber-600 hover:bg-amber-500 py-2.5 px-3 text-xs font-bold text-slate-950 transition-colors shadow-md cursor-pointer"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          <span>Cobrar Mensualidad por WhatsApp</span>
+                        </a>
+                      ) : (
+                        <div className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 py-2 px-3 text-[11px] text-slate-400">
+                          <MapPin className="h-3.5 w-3.5 text-amber-400" />
+                          <span>{ticket.telefono ? `Lugar: ${ticket.telefono}` : 'Sin teléfono registrado'}</span>
+                        </div>
+                      )
                     ) : ticket.estado === 'Completada' ? (
                       <div className="space-y-1.5">
                         <div className="text-center text-xs text-indigo-300 font-bold py-0.5">
                           🏆 Boleta 100% Pagada ($1.200.000 COP)
                         </div>
-                        {ticket.telefono && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setApprovalSuccessData({
-                                ticket,
-                                mes: 12,
-                                nombreMes: 'Diciembre',
-                              });
-                            }}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 py-2 px-3 text-xs font-semibold text-emerald-300 transition-colors cursor-pointer"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                            <span>Reenviar Comprobante Final por WhatsApp</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setApprovalSuccessData({
+                              ticket,
+                              mes: 12,
+                              nombreMes: MESES_NOMBRES[11],
+                            });
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 py-2 px-3 text-xs font-semibold text-emerald-300 transition-colors cursor-pointer"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          <span>Ver / Copiar PIN y Comprobante Final</span>
+                        </button>
                       </div>
                     ) : (
                       <div className="space-y-1.5">
@@ -780,23 +805,21 @@ export default function AdminPage() {
                             </span>
                           </button>
                         )}
-                        {ticket.telefono && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const ultMes = ticket.cuotasPagadas || 1;
-                              setApprovalSuccessData({
-                                ticket,
-                                mes: ultMes,
-                                nombreMes: MESES_NOMBRES[ultMes - 1],
-                              });
-                            }}
-                            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 py-2 px-3 text-xs font-semibold text-emerald-300 transition-colors cursor-pointer"
-                          >
-                            <MessageCircle className="h-3.5 w-3.5" />
-                            <span>Enviar PIN y Notificación por WhatsApp</span>
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const ultMes = ticket.cuotasPagadas || 1;
+                            setApprovalSuccessData({
+                              ticket,
+                              mes: ultMes,
+                              nombreMes: MESES_NOMBRES[ultMes - 1],
+                            });
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 py-2 px-3 text-xs font-semibold text-emerald-300 transition-colors cursor-pointer"
+                        >
+                          <MessageCircle className="h-3.5 w-3.5" />
+                          <span>Ver / Enviar PIN y Notificación</span>
+                        </button>
                       </div>
                     )}
                   </div>

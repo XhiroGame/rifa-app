@@ -20,6 +20,8 @@ import {
   Lock,
   Key,
   RefreshCw,
+  MapPin,
+  FileText,
 } from 'lucide-react';
 
 interface TicketModalProps {
@@ -195,31 +197,50 @@ export const TicketModal: React.FC<TicketModalProps> = ({
           /* Caso 2: Boleta Asignada a un Participante */
           <div className="space-y-4">
             {/* Tarjeta del Participante con Privacidad Protegida */}
-            <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-3.5 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2.5">
-                <div className="rounded-xl bg-slate-800 p-2 text-slate-400">
-                  <User className="h-4 w-4" />
+            <div className="rounded-2xl bg-slate-950/70 border border-slate-800 p-3.5 space-y-2 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="rounded-xl bg-slate-800 p-2 text-slate-400 shrink-0">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-slate-400 text-[11px]">Titular de la boleta:</p>
+                    <p className="font-bold text-white text-sm truncate">
+                      {isUnlocked ? nombre || 'Participante Asignado' : maskName(nombre)}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-slate-400 text-[11px]">Titular de la boleta:</p>
-                  <p className="font-bold text-white text-sm">
-                    {isUnlocked ? nombre || 'Participante Asignado' : maskName(nombre)}
-                  </p>
-                </div>
+
+                {isUnlocked && telefono && /\d{10}/.test(telefono.replace(/\D/g, '')) && (
+                  <a
+                    href={`https://wa.me/${telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
+                      `Hola ${nombre || ''}, te contacto respecto a tu boleta #${numero} de Rifas e Inversiones La Calidosa.`
+                    )}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 font-bold transition-colors shrink-0"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    <span>WhatsApp</span>
+                  </a>
+                )}
               </div>
 
-              {isUnlocked && telefono && (
-                <a
-                  href={`https://wa.me/${telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
-                    `Hola ${nombre || ''}, te contacto respecto a tu boleta #${numero} de Rifas e Inversiones La Calidosa.`
-                  )}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 font-bold transition-colors"
-                >
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  <span>WhatsApp</span>
-                </a>
+              {isUnlocked && (telefono || ticket.notas) && (
+                <div className="pt-2 border-t border-slate-800/80 space-y-1 text-[11px]">
+                  {telefono && (
+                    <div className="flex items-center gap-1.5 text-slate-300">
+                      <MapPin className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
+                      <span>Ubicación / Contacto: <strong className="text-white">{telefono}</strong></span>
+                    </div>
+                  )}
+                  {ticket.notas && (
+                    <div className="flex items-start gap-1.5 text-indigo-200/90">
+                      <FileText className="h-3.5 w-3.5 text-indigo-400 shrink-0 mt-0.5" />
+                      <span>{ticket.notas}</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
 
@@ -334,7 +355,7 @@ export const TicketModal: React.FC<TicketModalProps> = ({
                       Progreso Anual ({cuotasPagadas} de 12 cuotas)
                     </span>
                     <span className="font-mono font-bold text-emerald-400">
-                      ${(cuotasPagadas * 100000).toLocaleString('es-CO')} / $1.200.000 COP
+                      ${(ticket.totalAbonado ?? cuotasPagadas * 100000).toLocaleString('es-CO')} / $1.200.000 COP
                     </span>
                   </div>
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { RaffleConfig, Ticket } from '@/types/ticket';
-import { MESES_NOMBRES } from '@/lib/mockTickets';
+import { MESES_NOMBRES, generateHexPin } from '@/lib/mockTickets';
 import { ReceiptZoomModal } from '@/components/ReceiptZoomModal';
 import {
   X,
@@ -111,7 +111,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setNombre(ticket.nombre || '');
         setWhatsapp(ticket.telefono ? ticket.telefono.replace(/\D/g, '').slice(0, 10) : '');
         // Generar un PIN hexadecimal aleatorio de 4 cifras para apartado inicial
-        const randomHexPin = Math.floor(Math.random() * 0x10000).toString(16).toUpperCase().padStart(4, '0');
+        const randomHexPin = generateHexPin();
         setPin(randomHexPin);
       } else {
         setNombre(ticket.nombre || '');
@@ -514,9 +514,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       </label>
                       <button
                         type="button"
-                        onClick={() =>
-                          setPin(Math.floor(Math.random() * 0x10000).toString(16).toUpperCase().padStart(4, '0'))
-                        }
+                        onClick={() => setPin(generateHexPin())}
                         className="text-[11px] text-amber-400 hover:text-amber-300 underline inline-flex items-center gap-1 cursor-pointer"
                         title="Generar otro código al azar"
                       >
