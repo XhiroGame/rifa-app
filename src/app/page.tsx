@@ -246,7 +246,7 @@ export default function Home() {
       <footer className="mt-16 border-t border-slate-800/80 py-8 text-center text-xs text-slate-500">
         <p className="font-semibold text-slate-400">Rifas e Inversiones La Calidosa</p>
         <p className="mt-1 text-slate-600">
-          Plan 12 Meses (000 al 999) • Cuotas de $100.000 COP • Sincronización en tiempo real vía Google Sheets API v4
+          Plan 12 Meses (000 al 999) • Cuotas de $100.000 COP • Noviembre 2026 - Noviembre 2027
         </p>
         <div className="mt-3">
           <Link

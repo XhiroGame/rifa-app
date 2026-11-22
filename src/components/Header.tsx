@@ -18,26 +18,8 @@ export const Header: React.FC<HeaderProps> = ({ config, isDemo }) => {
       <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col gap-6">
-        {/* Top bar with sync status & buttons */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700/50 pb-4">
-          <div className="flex items-center gap-2">
-            {isDemo ? (
-              <div className="flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-medium text-amber-300 border border-amber-500/30">
-                <AlertCircle className="h-3.5 w-3.5" />
-                <span>Modo Local Activo (Simulación 12 Cuotas Mensuales)</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-medium text-emerald-300 border border-emerald-500/30">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>Conectado a Google Sheets en tiempo real</span>
-              </div>
-            )}
-          </div>
-
+        {/* Top bar with Admin button */}
+        <div className="flex flex-wrap items-center justify-end gap-3 border-b border-slate-700/50 pb-4">
           <div className="flex items-center gap-2">
             <Link
               href="/admin"

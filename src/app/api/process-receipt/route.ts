@@ -83,7 +83,7 @@ export async function POST(request: Request) {
             };
           });
         }
-      } catch {}
+      } catch { }
     }
 
     if (itemsToPay.length === 0) {
@@ -92,7 +92,7 @@ export async function POST(request: Request) {
         try {
           const parsed = JSON.parse(numero);
           numero = parsed[0] || '000';
-        } catch {}
+        } catch { }
       }
       const cleanNum = parseInt(numero, 10).toString().padStart(3, '0');
       itemsToPay = [{ numero: cleanNum, mes: defaultMes }];

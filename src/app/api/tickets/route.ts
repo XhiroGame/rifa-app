@@ -14,9 +14,22 @@ export async function GET() {
     const prize = (!rawPrize || rawPrize.includes(' o ,')) ? 'Primer Premio: Carro 0 Km o $70,000,000 COP' : rawPrize;
 
     const rawSub = process.env.NEXT_PUBLIC_RAFFLE_SUBTITLE || '';
-    const subtitle = (!rawSub || rawSub.includes('de .000') || rawSub.includes('de  000'))
-      ? '¡Elige tu número de la suerte del 000 al 999 y paga tu cuota mensual de $100.000 COP!'
-      : rawSub;
+    const subtitle =
+      !rawSub || rawSub.includes('de .000') || rawSub.includes('de  000') || rawSub.includes('?')
+        ? '¡Elige tu número de la suerte del 000 al 999 y paga tu cuota mensual de $100.000 COP!'
+        : rawSub;
+
+    const rawLottery = process.env.NEXT_PUBLIC_LOTTERY_NAME || '';
+    const lotteryName =
+      !rawLottery || rawLottery.includes('?')
+        ? 'Lotería de Medellín (Últimas 3 cifras)'
+        : rawLottery;
+
+    const rawDraw = process.env.NEXT_PUBLIC_DRAW_DATE || '';
+    const drawDate =
+      !rawDraw || rawDraw.includes('2026') || rawDraw.includes('?')
+        ? 'Noviembre de 2027'
+        : rawDraw;
 
     const rawWa = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').trim();
     const whatsappNumber = !rawWa || rawWa === '573001234567' ? '573135982641' : rawWa;
@@ -28,8 +41,8 @@ export async function GET() {
       monthlyPrice,
       totalPrice: '$1,200,000 COP (12 cuotas)',
       mesActual: MES_ACTUAL_RIFA,
-      drawDate: process.env.NEXT_PUBLIC_DRAW_DATE || 'Noviembre de 2027',
-      lotteryName: process.env.NEXT_PUBLIC_LOTTERY_NAME || 'Lotería de Medellín (Últimas 3 cifras)',
+      drawDate,
+      lotteryName,
       whatsappNumber,
       isDemo: !isGoogleSheetsConfigured(),
     };
