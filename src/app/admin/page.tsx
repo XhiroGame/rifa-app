@@ -273,8 +273,12 @@ export default function AdminPage() {
       <main className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center p-4">
         <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 p-8 shadow-2xl">
           <div className="text-center mb-6">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 mb-3">
-              <Lock className="h-7 w-7" />
+            <div className="mx-auto inline-flex items-center justify-center rounded-2xl bg-white p-3 shadow-xl shadow-amber-500/15 ring-2 ring-amber-400/50 mb-3">
+              <img
+                src="/logo-calidosa.png"
+                alt="Rifa e Inversiones La Calidosa"
+                className="h-20 w-auto object-contain"
+              />
             </div>
             <h1 className="text-2xl font-black text-white">Administración de la Rifa</h1>
             <p className="text-xs text-slate-400 mt-1">
@@ -383,8 +387,12 @@ export default function AdminPage() {
       <header className="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 px-4 sm:px-6 py-3.5">
         <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
-              <ShieldCheck className="h-5 w-5" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white p-1 shadow-md ring-1 ring-amber-400/50 shrink-0">
+              <img
+                src="/icon-calidosa.png"
+                alt="La Calidosa"
+                className="h-full w-full object-contain"
+              />
             </div>
             <div>
               <h1 className="text-base font-bold text-white flex items-center gap-2">

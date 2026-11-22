@@ -244,7 +244,14 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="mt-16 border-t border-slate-800/80 py-8 text-center text-xs text-slate-500">
-        <p className="font-semibold text-slate-400">Rifas e Inversiones La Calidosa</p>
+        <div className="mx-auto mb-3 inline-flex items-center justify-center rounded-xl bg-white p-1.5 shadow-md ring-1 ring-amber-400/40">
+          <img
+            src="/logo-calidosa.png"
+            alt="Rifa e Inversiones La Calidosa"
+            className="h-11 w-auto object-contain"
+          />
+        </div>
+        <p className="font-semibold text-slate-300">Rifas e Inversiones La Calidosa</p>
         <p className="mt-1 text-slate-600">
           Plan 12 Meses (000 al 999) • Cuotas de $100.000 COP • Noviembre 2026 - Noviembre 2027
         </p>

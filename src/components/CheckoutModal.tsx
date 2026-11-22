@@ -459,6 +459,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           /* View 2: Formulario de Pago y Apartado */
           <div>
             <div className="mb-5">
+              <div className="flex items-center gap-2 mb-2">
+                <img
+                  src="/icon-calidosa.png"
+                  alt="La Calidosa"
+                  className="h-6 w-6 rounded-full bg-white p-0.5 ring-1 ring-amber-400/50 object-contain"
+                />
+                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">
+                  Rifa e Inversiones La Calidosa
+                </span>
+              </div>
               <div className="flex flex-wrap items-center gap-2 mb-2">
                 <span className="font-mono text-2xl font-black text-white">
                   {isMultiPay ? `${activeTickets.length} Boletas Seleccionadas` : `Boleta #${ticket.numero}`}

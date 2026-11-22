@@ -168,8 +168,18 @@ export const TicketModal: React.FC<TicketModalProps> = ({
           <X className="h-5 w-5" />
         </button>
 
-        {/* Header con Número */}
+        {/* Header con Logo y Número */}
         <div className="text-center mb-5">
+          <div className="flex items-center justify-center gap-2 mb-2.5">
+            <img
+              src="/icon-calidosa.png"
+              alt="La Calidosa"
+              className="h-6 w-6 rounded-full bg-white p-0.5 ring-1 ring-amber-400/50 object-contain"
+            />
+            <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">
+              Rifa e Inversiones La Calidosa
+            </span>
+          </div>
           <div className="inline-flex items-center justify-center rounded-2xl bg-slate-800/90 px-6 py-2.5 border border-slate-700 shadow-inner mb-2.5">
             <span className="text-xs uppercase font-bold tracking-widest text-slate-400 mr-2">Boleta</span>
             <span className="font-mono text-3xl sm:text-4xl font-black text-white tracking-widest">

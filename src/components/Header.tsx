@@ -18,19 +18,30 @@ export const Header: React.FC<HeaderProps> = ({ config, isDemo }) => {
       <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-indigo-500/15 blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col gap-6">
-        {/* Main Title & Subtitle */}
+        {/* Main Title, Official Logo & Subtitle */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 rounded-lg bg-indigo-500/20 px-3 py-1 text-xs font-bold text-indigo-300 border border-indigo-500/30">
-              <Sparkles className="h-3.5 w-3.5 text-amber-300" />
-              <span>Rifa Anual (12 Meses) • 1,000 Números (000 - 999)</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-5">
+            {/* Official Client Logo Badge */}
+            <div className="shrink-0 self-start sm:self-center rounded-2xl bg-white p-2.5 shadow-xl shadow-amber-500/15 ring-2 ring-amber-400/50">
+              <img
+                src="/logo-calidosa.png"
+                alt="Rifa e Inversiones La Calidosa"
+                className="h-20 sm:h-24 w-auto object-contain"
+              />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-              {config.title}
-            </h1>
-            <p className="text-slate-300 text-sm sm:text-base max-w-2xl">
-              {config.subtitle}
-            </p>
+
+            <div className="space-y-2">
+              <div className="inline-flex items-center gap-2 rounded-lg bg-amber-500/15 px-3 py-1 text-xs font-bold text-amber-300 border border-amber-500/30">
+                <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                <span>Rifa Anual (12 Meses) • 1,000 Números (000 - 999)</span>
+              </div>
+              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
+                {config.title}
+              </h1>
+              <p className="text-slate-300 text-sm sm:text-base max-w-2xl">
+                {config.subtitle}
+              </p>
+            </div>
           </div>
 
           {/* Ticket Price Box (Cuota Mensual + Total Anual) */}
