@@ -110,8 +110,8 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-amber-300/90">Premio Mayor y Bolsa Total</p>
-              <p className="text-xs sm:text-sm font-bold text-white leading-snug">
-                Mayor $200 Millones • Total $800 Millones
+              <p className="text-sm font-bold text-white truncate">
+                Mayor $200M • Total $800 Millones
               </p>
             </div>
           </div>
@@ -121,9 +121,9 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
               <Calendar className="h-5 w-5" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-medium text-slate-400">Sorteos y Gran Final</p>
-              <p className="text-xs sm:text-sm font-semibold text-white leading-snug">
-                Diarios Lun-Vie • 1er Sáb Mes • Final 28 Oct 2027
+              <p className="text-xs font-medium text-slate-400">Fecha del Sorteo Final</p>
+              <p className="text-sm font-semibold text-white truncate">
+                Jueves 28 de Octubre de 2027
               </p>
             </div>
           </div>
@@ -134,18 +134,18 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-slate-400">Loterías Oficiales (3 Cifras)</p>
-              <p className="text-xs sm:text-sm font-semibold text-white leading-snug">
-                Bogotá, Boyacá y Loterías Nacionales
+              <p className="text-sm font-semibold text-white truncate">
+                Bogotá, Boyacá y Nacionales
               </p>
             </div>
           </div>
         </div>
 
-        {/* Cuentas Autorizadas + Botón para Desplegar Plan de Premios 2027 y Cláusulas */}
-        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 rounded-2xl bg-slate-950/60 border border-slate-700/70 p-3.5">
-          <div className="flex flex-wrap items-center gap-2.5 text-xs">
-            <span className="font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5 mr-1">
-              <Landmark className="h-4 w-4 text-amber-400" />
+        {/* Cuentas Autorizadas + Botón para Desplegar Plan de Premios 2027 y Cláusulas (Todo en 1 sola línea limpia) */}
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-3 rounded-2xl bg-slate-950/55 border border-slate-700/70 px-4 py-3">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 text-xs">
+            <span className="font-bold uppercase tracking-wider text-amber-300 flex items-center gap-1.5 whitespace-nowrap mr-1">
+              <Landmark className="h-4 w-4 text-amber-400 shrink-0" />
               <span>Cuentas Autorizadas:</span>
             </span>
 
@@ -153,15 +153,15 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
             <button
               type="button"
               onClick={() => handleCopyAccount('29700006972', 'bancolombia')}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700 px-3 py-1.5 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700 px-3 py-1.5 transition-colors cursor-pointer whitespace-nowrap"
               title="Clic para copiar número de cuenta Bancolombia"
             >
-              <span className="text-slate-300 font-medium">Bancolombia Ahorros:</span>
+              <span className="text-slate-300 font-medium">Bancolombia:</span>
               <span className="font-mono font-black text-amber-300 tracking-wide">297 000069 72</span>
               {copiedAccount === 'bancolombia' ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
               ) : (
-                <Copy className="h-3.5 w-3.5 text-slate-400" />
+                <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
               )}
             </button>
 
@@ -169,38 +169,38 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
             <button
               type="button"
               onClick={() => handleCopyAccount('3135982641', 'nequi')}
-              className="inline-flex items-center gap-2 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700 px-3 py-1.5 transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-slate-800/90 hover:bg-slate-800 border border-slate-700 px-3 py-1.5 transition-colors cursor-pointer whitespace-nowrap"
               title="Clic para copiar número Nequi"
             >
-              <Smartphone className="h-3.5 w-3.5 text-emerald-400" />
+              <Smartphone className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
               <span className="text-slate-300 font-medium">Nequi:</span>
               <span className="font-mono font-black text-emerald-300 tracking-wide">3135982641</span>
               {copiedAccount === 'nequi' ? (
-                <Check className="h-3.5 w-3.5 text-emerald-400" />
+                <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
               ) : (
-                <Copy className="h-3.5 w-3.5 text-slate-400" />
+                <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
               )}
             </button>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => setShowFlyerModal(true)}
-              className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 px-3 py-2 text-xs font-bold transition-all cursor-pointer shrink-0"
+              className="flex items-center justify-center gap-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 px-3.5 py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap"
             >
-              <Eye className="h-3.5 w-3.5 text-amber-400" />
+              <Eye className="h-3.5 w-3.5 text-amber-400 shrink-0" />
               <span>Ver Volante Oficial</span>
             </button>
 
             <button
               type="button"
               onClick={() => setShowFullPlan(!showFullPlan)}
-              className="flex-1 lg:flex-initial flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-4 py-2 text-xs font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer"
+              className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-4 py-2 text-xs font-black transition-all shadow-lg shadow-amber-500/20 cursor-pointer whitespace-nowrap"
             >
-              <Trophy className="h-4 w-4" />
-              <span>{showFullPlan ? 'Ocultar Plan de Premios y Cláusulas' : 'Ver Plan de Premios 2027 y Cláusulas'}</span>
-              {showFullPlan ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              <Trophy className="h-4 w-4 shrink-0" />
+              <span>{showFullPlan ? 'Ocultar Plan de Premios' : 'Plan de Premios 2027 y Cláusulas'}</span>
+              {showFullPlan ? <ChevronUp className="h-4 w-4 shrink-0" /> : <ChevronDown className="h-4 w-4 shrink-0" />}
             </button>
           </div>
         </div>
