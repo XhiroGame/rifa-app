@@ -110,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-amber-300/90">Premio Mayor y Bolsa Total</p>
-              <p className="text-sm font-bold text-white truncate">
+              <p className="text-xs sm:text-sm font-bold text-white leading-snug">
                 Mayor $200 Millones • Total $800 Millones
               </p>
             </div>
@@ -122,7 +122,7 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-slate-400">Sorteos y Gran Final</p>
-              <p className="text-sm font-semibold text-white truncate">
+              <p className="text-xs sm:text-sm font-semibold text-white leading-snug">
                 Diarios Lun-Vie • 1er Sáb Mes • Final 28 Oct 2027
               </p>
             </div>
@@ -134,7 +134,7 @@ export const Header: React.FC<HeaderProps> = ({ config }) => {
             </div>
             <div className="min-w-0">
               <p className="text-xs font-medium text-slate-400">Loterías Oficiales (3 Cifras)</p>
-              <p className="text-sm font-semibold text-white truncate">
+              <p className="text-xs sm:text-sm font-semibold text-white leading-snug">
                 Bogotá, Boyacá y Loterías Nacionales
               </p>
             </div>
