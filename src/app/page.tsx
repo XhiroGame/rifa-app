@@ -24,13 +24,13 @@ export default function Home() {
   });
   const [config, setConfig] = useState<RaffleConfig>({
     title: 'Rifas e Inversiones La Calidosa',
-    subtitle: 'Elige tu número de la suerte del 000 al 999 y abona tu cuota mensual de $100.000 COP',
-    prize: 'Primer Premio: Carro 0 Km o $70,000,000 COP',
+    subtitle: '¡Plan de Premios 2027 por $800.000.000 COP! Elige tu número del 000 al 999 y abona tu cuota mensual de $100.000 COP.',
+    prize: 'Premio Mayor: $200.000.000 COP ($800M en Premios)',
     monthlyPrice: '$100,000 COP / mes',
     totalPrice: '$1,200,000 COP (12 cuotas)',
     mesActual: 1,
-    drawDate: 'Noviembre de 2027',
-    lotteryName: 'Lotería de Medellín (Últimas 3 cifras)',
+    drawDate: '28 de Octubre de 2027 (Sorteos Diarios y Mensuales)',
+    lotteryName: 'Bogotá, Boyacá y Loterías Nacionales (3 últimas cifras)',
     whatsappNumber: '573135982641',
     isDemo: true,
   });

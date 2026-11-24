@@ -11,24 +11,27 @@ export async function GET() {
     const monthlyPrice = (!rawMonthly || rawMonthly.startsWith(',')) ? '$100,000 COP / mes' : rawMonthly;
 
     const rawPrize = process.env.NEXT_PUBLIC_RAFFLE_PRIZE || '';
-    const prize = (!rawPrize || rawPrize.includes(' o ,')) ? 'Primer Premio: Carro 0 Km o $70,000,000 COP' : rawPrize;
+    const prize =
+      !rawPrize || rawPrize.includes(' o ,') || rawPrize.includes('Carro 0 Km')
+        ? 'Premio Mayor: $200.000.000 COP ($800M en Premios)'
+        : rawPrize;
 
     const rawSub = process.env.NEXT_PUBLIC_RAFFLE_SUBTITLE || '';
     const subtitle =
       !rawSub || rawSub.includes('de .000') || rawSub.includes('de  000') || rawSub.includes('?')
-        ? '¡Elige tu número de la suerte del 000 al 999 y paga tu cuota mensual de $100.000 COP!'
+        ? '¡Plan de Premios 2027 por $800.000.000 COP! Elige tu número del 000 al 999 y abona tu cuota mensual de $100.000 COP.'
         : rawSub;
 
     const rawLottery = process.env.NEXT_PUBLIC_LOTTERY_NAME || '';
     const lotteryName =
-      !rawLottery || rawLottery.includes('?')
-        ? 'Lotería de Medellín (Últimas 3 cifras)'
+      !rawLottery || rawLottery.includes('?') || rawLottery.includes('Medell')
+        ? 'Bogotá, Boyacá y Loterías Nacionales (3 últimas cifras)'
         : rawLottery;
 
     const rawDraw = process.env.NEXT_PUBLIC_DRAW_DATE || '';
     const drawDate =
-      !rawDraw || rawDraw.includes('2026') || rawDraw.includes('?')
-        ? 'Noviembre de 2027'
+      !rawDraw || rawDraw.includes('2026') || rawDraw.includes('?') || rawDraw === 'Noviembre de 2027'
+        ? '28 de Octubre de 2027 (Sorteos Diarios y Mensuales)'
         : rawDraw;
 
     const rawWa = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '').trim();
