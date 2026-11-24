@@ -3,11 +3,11 @@ import { cookies } from 'next/headers';
 import { setCuotaAdminAction } from '@/lib/googleSheets';
 
 export async function POST(request: Request) {
-  try {
-    const cookieStore = await cookies();
-    const adminCookie = cookieStore.get('rifa_admin_auth')?.value;
-    const adminHeader = request.headers.get('x-admin-auth');
+  const cookieStore = await cookies();
+  const adminCookie = cookieStore.get('rifa_admin_auth')?.value;
+  const adminHeader = request.headers.get('x-admin-auth');
 
+  try {
     if (adminCookie !== 'authenticated_v2' && adminHeader !== 'authenticated_v2') {
       return NextResponse.json(
         { success: false, message: 'No autorizado. Inicia sesión como administrador.' },

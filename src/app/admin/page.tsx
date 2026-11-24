@@ -89,7 +89,10 @@ export default function AdminPage() {
   const fetchAdminTickets = useCallback(async (silent = false) => {
     if (!silent) setIsRefreshing(true);
     try {
-      const res = await fetch('/api/tickets?admin=1', { cache: 'no-store' });
+      const res = await fetch('/api/tickets?admin=1', {
+        cache: 'no-store',
+        headers: { 'x-admin-auth': 'authenticated_v2' },
+      });
       const data: TicketsApiResponse = await res.json();
       if (data.success && data.tickets) {
         setTickets(data.tickets);

@@ -5,13 +5,13 @@ import { RaffleConfig } from '@/types/ticket';
 import { MES_ACTUAL_RIFA } from '@/lib/mockTickets';
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const isAdminQuery = searchParams.get('admin') === '1';
-    const cookieStore = await cookies();
-    const adminCookie = cookieStore.get('rifa_admin_auth')?.value;
-    const isAdminAuthenticated = isAdminQuery || adminCookie === 'authenticated_v2';
+  const cookieStore = await cookies();
+  const adminCookie = cookieStore.get('rifa_admin_auth')?.value;
+  const adminHeader = request.headers.get('x-admin-auth');
+  const isAdminAuthenticated =
+    adminCookie === 'authenticated_v2' || adminHeader === 'authenticated_v2';
 
+  try {
     const { tickets, isDemo, stats } = await getTickets();
 
     // Si es la vista pública general, ocultar claveSeguridad (PIN), comprobanteUrl y referencia por privacidad y seguridad
