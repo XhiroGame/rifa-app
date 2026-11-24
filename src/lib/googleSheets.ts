@@ -571,7 +571,8 @@ export async function payMultipleCuotasInGoogleSheets(
         montoPorBoleta !== CUOTA_PRECIO
           ? ` [Abono $${montoPorBoleta.toLocaleString('es-CO')}]`
           : '';
-      const cuotaNota = `Cuota ${it.mes} (${MESES_NOMBRES[it.mes - 1]}): Ref ${receiptData.referencia}${montoTag}${groupTag} | En revisión`;
+      const newResTag = estadoActual === 'disponible' && !rowName ? ' [Apartado Web]' : '';
+      const cuotaNota = `Cuota ${it.mes} (${MESES_NOMBRES[it.mes - 1]}): Ref ${receiptData.referencia}${montoTag}${groupTag}${newResTag} | En revisión`;
       const notas = baseReferido ? `${baseReferido} | ${cuotaNota}` : cuotaNota;
 
       const prevColD = (row[3] || '').toString().trim();
@@ -721,8 +722,14 @@ export async function setCuotaAdminAction(
       });
 
       // Actualizar columna Notas (U) para reflejar que la cuota o abono parcial ya fue aprobado
-      const notaAprobada = notaActual.includes('En revisión')
-        ? notaActual.replace(/En revisión/gi, nuevoEstadoMes === 'Pagado' ? 'Aprobada' : `Abono aprobado (Total: $${totalAbonado.toLocaleString('es-CO')})`)
+      const cleanNotaActual = notaActual.replace(/\s*\[Apartado Web\]/gi, '');
+      const notaAprobada = cleanNotaActual.includes('En revisión')
+        ? cleanNotaActual.replace(
+            /En revisión/gi,
+            nuevoEstadoMes === 'Pagado'
+              ? 'Aprobada'
+              : `Abono aprobado (Total: $${totalAbonado.toLocaleString('es-CO')})`
+          )
         : `Cuota ${mes} (${MESES_NOMBRES[mes - 1]}): Aprobada`;
 
       await sheets.spreadsheets.values.update({
@@ -755,27 +762,43 @@ export async function setCuotaAdminAction(
         requestBody: { values: [['Pendiente']] },
       });
 
-      if (cuotasPagadas === 0) {
+      const notaActual = (row[20] || '').toString();
+      const esApartadoWebNuevo = notaActual.includes('[Apartado Web]');
+      const prevTotalAbonado = parseInt((row[5] || '').toString().replace(/[^\d]/g, ''), 10) || 0;
+
+      if (cuotasPagadas === 0 && esApartadoWebNuevo && prevTotalAbonado === 0) {
+        // Solo liberar la boleta a Disponible si era un apartado web nuevo que fue rechazado en su primera cuota
         await sheets.spreadsheets.values.update({
           spreadsheetId: SHEET_ID,
           range: `'${SHEET_TAB_NAME}'!B${rowIndex}:D${rowIndex}`,
           valueInputOption: 'USER_ENTERED',
           requestBody: { values: [['Disponible', '', '']] },
         });
-        // Limpiar clave
         await sheets.spreadsheets.values.update({
           spreadsheetId: SHEET_ID,
-          range: `'${SHEET_TAB_NAME}'!V${rowIndex}`,
+          range: `'${SHEET_TAB_NAME}'!S${rowIndex}:U${rowIndex}`,
           valueInputOption: 'USER_ENTERED',
-          requestBody: { values: [['']] },
+          requestBody: { values: [['', '', '']] },
         });
       } else {
+        // Si el cliente ya era titular de la boleta en la base de datos, conservar sus datos y dejar en En mora o Al día
         const nuevoEstado = cuotasPagadas >= MES_ACTUAL_RIFA ? 'Al día' : 'En mora';
+        const baseReferido = notaActual
+          .split('|')
+          .map((s: string) => s.trim())
+          .filter((s: string) => s && !/^Cuota \d+/i.test(s) && !/^En revisión$/i.test(s))
+          .join(' | ');
         await sheets.spreadsheets.values.update({
           spreadsheetId: SHEET_ID,
           range: `'${SHEET_TAB_NAME}'!B${rowIndex}`,
           valueInputOption: 'USER_ENTERED',
           requestBody: { values: [[nuevoEstado]] },
+        });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: SHEET_ID,
+          range: `'${SHEET_TAB_NAME}'!U${rowIndex}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: { values: [[baseReferido]] },
         });
       }
 

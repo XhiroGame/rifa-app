@@ -3,9 +3,15 @@
  */
 
 export function cleanColombianPhone(phone: string): string {
-  const digits = (phone || '').replace(/\D/g, '');
+  const raw = (phone || '').toString();
+  // Buscar primero un número móvil colombiano de 10 dígitos (3XXXXXXXXX) o con código de país (573XXXXXXXXX)
+  const mobileMatch = raw.match(/(?:57)?(3\d{9})/);
+  if (mobileMatch) {
+    return `57${mobileMatch[1]}`;
+  }
+  const digits = raw.replace(/\D/g, '');
   if (!digits) return '';
-  if (digits.startsWith('57')) return digits;
+  if (digits.startsWith('57') && digits.length >= 12) return digits.slice(0, 12);
   if (digits.length === 10) return `57${digits}`;
   return digits;
 }
@@ -37,7 +43,7 @@ export function buildApprovalWhatsAppMessage(params: ApprovalMessageParams): str
     claveSeguridad = 'N/A',
     raffleTitle = 'Rifas e Inversiones La Calidosa',
     ticketPrice = '$100.000 COP',
-    prize = 'Primer Premio: Carro 0 Km o $70,000,000 COP',
+    prize = 'Plan de Premios 2027 por $800.000.000 COP (Premio Mayor: $200.000.000 COP)',
   } = params;
 
   return `🎉 *¡PAGO APROBADO EXITOSAMENTE!* 🎉
@@ -57,9 +63,9 @@ Hola *${nombre}*, te confirmamos que tu pago ha sido verificado y aprobado ofici
 
 ⚠️ _*IMPORTANTE:* Guarda este código PIN en este chat. Lo necesitarás cada mes al pagar tu mensualidad de $100.000 COP para autorizar tu abono y proteger tu boleta de terceros._
 
-🏆 *Gran Premio:* ${prize}
-📅 *Sorteo Final:* 20 de Diciembre de 2026
-🎲 *Lotería:* Lotería de Medellín (Últimas 3 cifras)
+🏆 *Premios:* ${prize}
+📅 *Sorteos:* Diarios Lun-Vie ($1M), 1er Sábado de cada mes ($10M con Boyacá) y Sorteo Mayor el 28 de Octubre de 2027 (Lotería de Bogotá - 3 últimas cifras)
+🏦 *Cuentas Autorizadas:* Bancolombia Ahorros 297 000069 72 | Nequi 3135982641
 
 ¡Muchas gracias por tu puntualidad y te deseamos la mejor de las suertes! 🍀`;
 }
@@ -83,9 +89,13 @@ export function buildOverdueWhatsAppMessage(params: {
 
   return `Hola *${nombre}*, te escribimos de *${raffleTitle}*.
 
-Queremos recordarte cordialmente que tienes pendiente tu cuota mensual de la boleta *#${numero}* (Mes ${mesActual} - ${nombreMesActual}) por valor de *$100.000 COP*.
+Queremos recordarte cordialmente que tienes pendiente tu cuota mensual de la boleta *#${numero}* (Cuota ${mesActual} - ${nombreMesActual}) por valor de *$100.000 COP*.
 
-Llevas *${cuotasPagadas}/12* cuotas canceladas. Te invitamos a ponerte al día para conservar tu número activo y participar por el *Carro 0 Km o $70,000,000 COP*. 🏆
+Llevas *${cuotasPagadas}/12* cuotas canceladas. Te invitamos a ponerte al día para mantener tu número activo en todos los sorteos del *Plan de Premios 2027 ($800.000.000 en premios / Mayor de $200.000.000 COP)*. 🏆
+
+🏦 *Cuentas Autorizadas:*
+• Ahorros Bancolombia: *297 000069 72*
+• Nequi: *3135982641*
 
 ¿Deseas realizar tu abono hoy? Quedamos atentos para registrar tu comprobante. ¡Feliz día!`;
 }

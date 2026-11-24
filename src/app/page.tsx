@@ -105,7 +105,7 @@ export default function Home() {
   const filteredTickets = useMemo(() => {
     return tickets.filter((ticket) => {
       if (searchQuery.trim() !== '') {
-        const query = searchQuery.trim().toLowerCase();
+        const query = searchQuery.trim().toLowerCase().replace(/^#/, '');
         const matchesNum = ticket.numero.includes(query);
         const matchesName = ticket.nombre?.toLowerCase().includes(query);
         const matchesTel = ticket.telefono?.includes(query);

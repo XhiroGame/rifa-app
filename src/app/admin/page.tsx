@@ -89,7 +89,7 @@ export default function AdminPage() {
   const fetchAdminTickets = useCallback(async (silent = false) => {
     if (!silent) setIsRefreshing(true);
     try {
-      const res = await fetch('/api/tickets', { cache: 'no-store' });
+      const res = await fetch('/api/tickets?admin=1', { cache: 'no-store' });
       const data: TicketsApiResponse = await res.json();
       if (data.success && data.tickets) {
         setTickets(data.tickets);
@@ -151,7 +151,7 @@ export default function AdminPage() {
     try {
       const res = await fetch('/api/admin/action', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-admin-auth': 'authenticated_v2' },
         body: JSON.stringify({
           numero,
           mes,
@@ -214,7 +214,7 @@ export default function AdminPage() {
         const gtMes = gt.cuotaEnRevision || gt.cuotasPagadas + 1;
         await fetch('/api/admin/action', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'x-admin-auth': 'authenticated_v2' },
           body: JSON.stringify({
             numero: gt.numero,
             mes: gtMes,
@@ -252,7 +252,7 @@ export default function AdminPage() {
       }
 
       if (searchQuery.trim() !== '') {
-        const query = searchQuery.trim().toLowerCase();
+        const query = searchQuery.trim().toLowerCase().replace(/^#/, '');
         const matchNum = t.numero.includes(query);
         const matchName = t.nombre?.toLowerCase().includes(query);
         const matchTel = t.telefono?.toLowerCase().includes(query);
@@ -677,11 +677,12 @@ export default function AdminPage() {
                             </span>
                             {/\d{10}/.test(ticket.telefono.replace(/\D/g, '')) && (
                               <a
-                                href={`https://wa.me/${ticket.telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
+                                href={getWhatsAppUrl(
+                                  ticket.telefono,
                                   ticket.estado === 'En mora'
                                     ? `Hola ${ticket.nombre || ''}, te escribo de Rifas e Inversiones La Calidosa. Queremos recordarte que tienes pendiente tu cuota mensual de la boleta #${ticket.numero} ($100.000 COP). ¿Deseas hacer el abono hoy?`
                                     : `Hola ${ticket.nombre || ''}, te contacto sobre tu boleta #${ticket.numero} de Rifas e Inversiones La Calidosa.`
-                                )}`}
+                                )}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline shrink-0"

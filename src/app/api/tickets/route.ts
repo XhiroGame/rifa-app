@@ -1,11 +1,28 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { getTickets, isGoogleSheetsConfigured } from '@/lib/googleSheets';
 import { RaffleConfig } from '@/types/ticket';
 import { MES_ACTUAL_RIFA } from '@/lib/mockTickets';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const isAdminQuery = searchParams.get('admin') === '1';
+    const cookieStore = await cookies();
+    const adminCookie = cookieStore.get('rifa_admin_auth')?.value;
+    const isAdminAuthenticated = isAdminQuery || adminCookie === 'authenticated_v2';
+
     const { tickets, isDemo, stats } = await getTickets();
+
+    // Si es la vista pública general, ocultar claveSeguridad (PIN), comprobanteUrl y referencia por privacidad y seguridad
+    const safeTickets = isAdminAuthenticated
+      ? tickets
+      : tickets.map((t) => ({
+          ...t,
+          claveSeguridad: undefined,
+          comprobanteUrl: undefined,
+          referencia: undefined,
+        }));
 
     const rawMonthly = process.env.NEXT_PUBLIC_MONTHLY_PRICE || '';
     const monthlyPrice = (!rawMonthly || rawMonthly.startsWith(',')) ? '$100,000 COP / mes' : rawMonthly;
@@ -53,7 +70,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: true,
-        tickets,
+        tickets: safeTickets,
         stats,
         config,
         isDemo,

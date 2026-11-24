@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { RaffleConfig, Ticket } from '@/types/ticket';
 import { MESES_NOMBRES, generateHexPin } from '@/lib/mockTickets';
+import { getWhatsAppUrl } from '@/lib/whatsappMessages';
 import { ReceiptZoomModal } from '@/components/ReceiptZoomModal';
 import {
   X,
@@ -377,9 +378,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
                 <div className="pt-1">
                   <a
-                    href={`https://wa.me/${whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(
-                      `🎟️ *MI COMPROBANTE - RIFA 2026*\n\nHe registrado mi comprobante de pago para la Boleta #${ticket.numero} (Cuota ${mes} - ${nombreMes}) en Rifas e Inversiones La Calidosa.\n\n🔐 *MI CLAVE ÚNICA (PIN):* *${successData.claveAsignada}*\n\n⚠️ Guarda este mensaje para tener siempre tu código a mano para las próximas cuotas mensuales.`
-                    )}`}
+                    href={getWhatsAppUrl(
+                      whatsapp,
+                      `🎟️ *MI COMPROBANTE - PLAN DE PREMIOS 2027*\n\nHe registrado mi comprobante de pago para la Boleta #${ticket.numero} (Cuota ${mes} - ${nombreMes}) en Rifas e Inversiones La Calidosa.\n\n🔐 *MI CLAVE ÚNICA (PIN):* *${successData.claveAsignada}*\n\n⚠️ Guarda este mensaje para tener siempre tu código a mano para las próximas cuotas mensuales.`
+                    )}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center justify-center gap-2 text-xs font-bold text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 py-2 px-3.5 rounded-xl transition-all shadow-sm"

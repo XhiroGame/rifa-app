@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Ticket, RaffleConfig } from '@/types/ticket';
 import { MESES_NOMBRES, normalizeOwnerName } from '@/lib/mockTickets';
+import { getWhatsAppUrl } from '@/lib/whatsappMessages';
 import {
   X,
   CheckCircle2,
@@ -267,9 +268,10 @@ export const TicketModal: React.FC<TicketModalProps> = ({
 
                 {isUnlocked && telefono && /\d{10}/.test(telefono.replace(/\D/g, '')) && (
                   <a
-                    href={`https://wa.me/${telefono.replace(/\D/g, '')}?text=${encodeURIComponent(
+                    href={getWhatsAppUrl(
+                      telefono,
                       `Hola ${nombre || ''}, te contacto respecto a tu boleta #${numero} de Rifas e Inversiones La Calidosa.`
-                    )}`}
+                    )}
                     target="_blank"
                     rel="noreferrer"
                     className="flex items-center gap-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3 py-1.5 font-bold transition-colors shrink-0"
@@ -494,17 +496,19 @@ export const TicketModal: React.FC<TicketModalProps> = ({
                         >
                           Pagar Todas ({payableOwnerTickets.length} = ${(payableOwnerTickets.length * 100000).toLocaleString('es-CO')})
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedNums([ticket.numero])}
-                          className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
-                            selectedTicketsList.length === 1 && selectedTicketsList[0]?.numero === ticket.numero
-                              ? 'bg-indigo-500/25 text-indigo-200 border-indigo-500/50'
-                              : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border-slate-700'
-                          }`}
-                        >
-                          Solo #{ticket.numero} ($100.000)
-                        </button>
+                        {payableOwnerTickets.some((t) => t.numero === ticket.numero) && (
+                          <button
+                            type="button"
+                            onClick={() => setSelectedNums([ticket.numero])}
+                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer border ${
+                              selectedTicketsList.length === 1 && selectedTicketsList[0]?.numero === ticket.numero
+                                ? 'bg-indigo-500/25 text-indigo-200 border-indigo-500/50'
+                                : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 border-slate-700'
+                            }`}
+                          >
+                            Solo #{ticket.numero} ($100.000)
+                          </button>
+                        )}
                       </div>
                     )}
 
