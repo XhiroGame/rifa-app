@@ -17,10 +17,7 @@ import {
   MessageCircle,
   ArrowRight,
   ShieldCheck,
-  Bot,
-  ExternalLink,
   Coins,
-  Calendar,
   Key,
   Lock,
   RefreshCw,
@@ -53,7 +50,7 @@ interface CheckoutModalProps {
   isOpen: boolean;
   ticket: Ticket | null;
   selectedTickets?: Ticket[];
-  mes: number; // 1 a 12
+  mes: number;
   initialPin?: string;
   config: RaffleConfig;
   onClose: () => void;
@@ -75,6 +72,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [pin, setPin] = useState(initialPin || '');
   const [showPin, setShowPin] = useState(false);
   const [pinCopied, setPinCopied] = useState(false);
+  const [copiedBank, setCopiedBank] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<'full' | 'custom'>('full');
   const [customAmountStr, setCustomAmountStr] = useState('');
 
@@ -95,10 +93,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Limpiar y resetear estados cada vez que se abre el modal o cambia la boleta
   useEffect(() => {
     if (isOpen && ticket) {
-      // SIEMPRE resetear el estado de éxito y archivo anterior para que no se quede pegado
       setSuccessData(null);
       setFile(null);
       setPreviewUrl(null);
@@ -114,12 +110,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       }
 
       if (ticket.estado === 'Disponible') {
-        // Si la boleta es nueva/disponible, limpiar nombre o precargar si ya estaba
         setNombre(ticket.nombre || '');
         setWhatsapp(ticket.telefono ? ticket.telefono.replace(/\D/g, '').slice(0, 10) : '');
-        // Generar un PIN hexadecimal aleatorio de 4 cifras para apartado inicial
-        const randomHexPin = generateHexPin();
-        setPin(randomHexPin);
+        setPin(generateHexPin());
       } else {
         setNombre(ticket.nombre || '');
         setWhatsapp(ticket.telefono ? ticket.telefono.replace(/\D/g, '').slice(0, 10) : '');
@@ -130,8 +123,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen || !ticket) return null;
 
-  const activeTickets =
-    selectedTickets && selectedTickets.length > 0 ? selectedTickets : [ticket];
+  const activeTickets = selectedTickets && selectedTickets.length > 0 ? selectedTickets : [ticket];
   const isMultiPay = activeTickets.length > 1;
   const standardTotalAmount = activeTickets.length * 100000;
   const standardTotalFormatted = `$${standardTotalAmount.toLocaleString('es-CO')} COP`;
@@ -143,7 +135,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const nombreMes = MESES_NOMBRES[mes - 1] || `Mes ${mes}`;
   const esApartadoInicial = ticket.estado === 'Disponible' && !isMultiPay;
 
-  // Manejador centralizado de cierre para limpiar todo el estado
   const handleClose = () => {
     setIsZoomOpen(false);
     setZoomImageUrl(null);
@@ -162,19 +153,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     onClose();
   };
 
-  // Manejo de archivo seleccionado
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = e.target.files?.[0];
     if (!selected) return;
 
     const validMimes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
     if (!validMimes.includes(selected.type)) {
-      setErrorMessage('Por favor sube un archivo de imagen válido (JPG o PNG).');
+      setErrorMessage('Sube un archivo de imagen JPG, PNG o WebP.');
       return;
     }
 
     if (selected.size > 10 * 1024 * 1024) {
-      setErrorMessage('La imagen es demasiado pesada. El tamaño máximo permitido es 10MB.');
+      setErrorMessage('La imagen supera el límite de 10 MB.');
       return;
     }
 
@@ -194,42 +184,37 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  // Envío del formulario
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!nombre.trim()) {
-      setErrorMessage('Por favor completa tu nombre completo.');
+      setErrorMessage('Completa tu nombre completo.');
       return;
     }
 
     const cleanWhatsapp = whatsapp.replace(/\D/g, '').trim();
-    if (cleanWhatsapp.length !== 10) {
-      setErrorMessage('El número de WhatsApp debe tener exactamente 10 números (ej: 3001234567).');
-      return;
-    }
-    if (!cleanWhatsapp.startsWith('3')) {
-      setErrorMessage('El número de celular debe ser un número real que comience con 3 (ej: 3001234567).');
+    if (cleanWhatsapp.length !== 10 || !cleanWhatsapp.startsWith('3')) {
+      setErrorMessage('Ingresa un número de celular válido de 10 dígitos que empiece por 3.');
       return;
     }
 
     const cleanPin = pin.trim().toUpperCase();
     if (!cleanPin || !/^[0-9A-F]{4}$/.test(cleanPin)) {
-      setErrorMessage('Debes ingresar una clave única hexadecimal válida de 4 cifras (0-9, A-F, ej: 7B2A).');
+      setErrorMessage('Ingresa una clave hexadecimal válida de 4 cifras (0-9, A-F).');
       return;
     }
     if (paymentMode === 'custom' && parsedCustomAmount < 10000) {
-      setErrorMessage('Por favor ingresa un valor válido a abonar (mínimo $10.000 COP).');
+      setErrorMessage('Ingresa un valor válido a abonar (mínimo $10.000 COP).');
       return;
     }
     if (!file) {
-      setErrorMessage('Debes adjuntar la imagen del comprobante de pago (JPG o PNG).');
+      setErrorMessage('Adjunta la imagen del comprobante de transferencia.');
       return;
     }
 
     setIsSubmitting(true);
     setErrorMessage(null);
-    setLoadingStep('Analizando comprobante con Gemini AI...');
+    setLoadingStep('Verificando comprobante...');
 
     let stepTimer: ReturnType<typeof setTimeout> | null = null;
     try {
@@ -252,7 +237,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       formData.append('comprobante', file);
 
       stepTimer = setTimeout(() => {
-        setLoadingStep('Validando referencia única y subiendo comprobante a la nube...');
+        setLoadingStep('Guardando comprobante y registrando cuota...');
       }, 1200);
 
       const res = await fetch('/api/process-receipt', {
@@ -269,13 +254,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           drive: data.drive,
           claveAsignada: data.claveAsignada || cleanPin,
         });
-        onSuccess(
-          ticket.numero,
-          mes,
-          data.numeros || activeTickets.map((t) => t.numero)
-        );
+        onSuccess(ticket.numero, mes, data.numeros || activeTickets.map((t) => t.numero));
       } else {
-        setErrorMessage(data.message || 'Ocurrió un error al procesar el pago.');
+        setErrorMessage(data.message || 'No se pudo procesar el pago.');
       }
     } catch (err) {
       console.error(err);
@@ -287,14 +268,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   };
 
-  // Copiar PIN al portapapeles
   const handleCopyPin = (code: string) => {
     navigator.clipboard.writeText(code);
     setPinCopied(true);
     setTimeout(() => setPinCopied(false), 2500);
   };
 
-  // Enviar mensaje de confirmación por WhatsApp
+  const handleCopyBank = (val: string, key: string) => {
+    navigator.clipboard.writeText(val);
+    setCopiedBank(key);
+    setTimeout(() => setCopiedBank(null), 2200);
+  };
+
   const handleNotifyWhatsApp = () => {
     const cleanWaNum = config.whatsappNumber.replace(/\D/g, '');
     const activePin = successData?.claveAsignada || pin.toUpperCase();
@@ -309,74 +294,77 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-3xl bg-slate-900 border border-slate-700/80 p-6 sm:p-8 shadow-2xl text-slate-100">
-        {/* Close Button */}
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150"
+    >
+      <div className="relative w-full max-w-lg max-h-[92vh] overflow-y-auto rounded-2xl bg-white border border-slate-200 p-6 sm:p-7 shadow-2xl text-slate-900">
         <button
           onClick={handleClose}
-          className="absolute top-5 right-5 rounded-full p-2 text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+          className="absolute top-5 right-5 rounded-full p-2 text-slate-400 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <X className="h-5 w-5" />
         </button>
 
-        {/* View 1: Éxito */}
         {successData ? (
           <div className="text-center py-2 space-y-5">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-              <ShieldCheck className="h-8 w-8" />
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200">
+              <ShieldCheck className="h-7 w-7" />
             </div>
 
             <div>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-500/15 px-3 py-1 text-xs font-semibold text-violet-300 border border-violet-500/30 mb-2">
-                <Clock className="h-3.5 w-3.5" /> Estado: {isMultiPay ? `${activeTickets.length} boletas en revisión` : 'Cuota en revisión'}
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#124ec7] border border-blue-200 mb-2">
+                <Clock className="h-3.5 w-3.5" />
+                {isMultiPay ? `${activeTickets.length} boletas en revisión` : 'Cuota en revisión'}
               </span>
-              <h2 className="text-2xl font-black text-white">¡Comprobante Enviado!</h2>
-              <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-sm mx-auto">
+              <h2 className="text-2xl font-extrabold text-slate-900">¡Comprobante registrado!</h2>
+              <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-sm mx-auto">
                 {isMultiPay ? (
                   <>
-                    Tu pago por <strong className="text-emerald-400">{totalAmountFormatted}</strong> para las{' '}
-                    <strong className="text-white">{activeTickets.length} boletas seleccionadas ({activeNumsLabel})</strong> ha sido registrado en Google Sheets.
+                    Registramos tu pago por <strong className="text-emerald-700">{totalAmountFormatted}</strong> para{' '}
+                    <strong className="text-slate-900">{activeTickets.length} boletas ({activeNumsLabel})</strong>.
                   </>
                 ) : (
                   <>
-                    Tu pago para la <strong className="text-white">Cuota {mes} ({nombreMes})</strong> de la boleta{' '}
-                    <strong className="text-emerald-400">#{ticket.numero}</strong> ha sido registrado en Google Sheets.
+                    Registramos tu pago de la <strong className="text-slate-900">Cuota {mes} ({nombreMes})</strong> para la boleta{' '}
+                    <strong className="text-emerald-700">#{ticket.numero}</strong>.
                   </>
                 )}
               </p>
             </div>
 
-            {/* TARJETA DE SEGURIDAD: CLAVE ÚNICA */}
             {successData.claveAsignada && (
-              <div className="rounded-2xl bg-gradient-to-b from-amber-500/15 to-amber-950/20 border-2 border-amber-500/40 p-4 text-center space-y-2">
-                <div className="flex items-center justify-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-400">
-                  <Key className="h-4 w-4" />
-                  <span>Tu Clave Única Hexadecimal</span>
+              <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-4 text-center space-y-2.5">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-amber-900">
+                  <Key className="h-4 w-4 text-amber-600" />
+                  <span>Tu clave PIN de seguridad</span>
                 </div>
 
-                <div className="flex items-center justify-center gap-3">
-                  <span className="font-mono text-3xl sm:text-4xl font-black text-amber-300 tracking-widest bg-slate-950/70 px-4 py-1.5 rounded-xl border border-amber-500/30 uppercase">
+                <div className="flex items-center justify-center gap-2.5">
+                  <span className="font-mono text-3xl font-extrabold text-slate-900 tracking-widest bg-white px-4 py-1.5 rounded-xl border border-amber-300 uppercase">
                     {successData.claveAsignada}
                   </span>
                   <button
                     type="button"
                     onClick={() => handleCopyPin(successData.claveAsignada!)}
-                    className="p-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer"
-                    title="Copiar Clave"
+                    className="p-2.5 rounded-xl bg-white hover:bg-amber-100/60 text-amber-800 border border-amber-300 transition-colors cursor-pointer"
+                    title="Copiar PIN"
                   >
-                    {pinCopied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                    {pinCopied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4" />}
                   </button>
                 </div>
 
-                <p className="text-[11px] text-slate-300 leading-snug max-w-xs mx-auto">
+                <p className="text-[11px] text-slate-600 leading-snug max-w-xs mx-auto">
                   {pinCopied ? (
-                    <strong className="text-emerald-400">¡Clave copiada al portapapeles!</strong>
+                    <strong className="text-emerald-700">Clave copiada al portapapeles</strong>
                   ) : (
-                    'Guarda bien esta clave hexadecimal de 4 cifras. La necesitarás cada mes al pagar tu mensualidad de $100.000 COP en Rifas e Inversiones La Calidosa para proteger tu número de terceros.'
+                    'Guarda esta clave de 4 cifras. La usarás cada mes para consultar y abonar tus cuotas.'
                   )}
                 </p>
 
-                <div className="pt-1">
+                <div>
                   <a
                     href={getWhatsAppUrl(
                       whatsapp,
@@ -384,138 +372,118 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     )}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 text-xs font-bold text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 py-2 px-3.5 rounded-xl transition-all shadow-sm"
+                    className="inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-emerald-800 bg-white hover:bg-emerald-50 border border-emerald-300 py-2 px-3.5 rounded-xl transition-colors"
                   >
-                    <MessageCircle className="h-4 w-4 text-emerald-400" />
+                    <MessageCircle className="h-4 w-4 text-emerald-600" />
                     <span>Guardar mi PIN en mi WhatsApp</span>
                   </a>
                 </div>
               </div>
             )}
 
-            {/* Extracted Data Card */}
             {successData.extractedData && (
-              <div className="rounded-2xl bg-slate-950/90 border border-indigo-500/30 p-4 text-left space-y-2 text-xs">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className="flex items-center gap-1.5 font-bold text-indigo-300">
-                    <Bot className="h-4 w-4 text-indigo-400" />
-                    Datos detectados por Gemini AI
-                  </span>
-                  <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Única
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-4 text-left space-y-2.5 text-xs">
+                <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Referencia:</span>
-                    <span className="font-mono font-bold text-white">{successData.extractedData.referencia}</span>
+                    <span className="text-slate-500 text-[11px] block">Referencia</span>
+                    <span className="font-mono font-bold text-slate-900">{successData.extractedData.referencia}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Monto:</span>
-                    <span className="font-mono font-bold text-emerald-400">
+                    <span className="text-slate-500 text-[11px] block">Monto registrado</span>
+                    <span className="font-mono font-bold text-emerald-700">
                       {successData.extractedData.montoTotal
                         ? `$${successData.extractedData.montoTotal.toLocaleString('es-CO')} COP`
-                        : '$100.000 COP'}
+                        : totalAmountFormatted}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Fecha y Hora:</span>
-                    <span className="text-slate-200">
+                    <span className="text-slate-500 text-[11px] block">Fecha</span>
+                    <span className="text-slate-800 font-medium">
                       {successData.extractedData.fecha} {successData.extractedData.hora || ''}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 text-[11px] block">Banco / App:</span>
-                    <span className="text-slate-200">{successData.extractedData.banco || 'Nequi'}</span>
+                    <span className="text-slate-500 text-[11px] block">Entidad</span>
+                    <span className="text-slate-800 font-medium">{successData.extractedData.banco || 'Transferencia'}</span>
                   </div>
                 </div>
 
                 {successData.drive?.webViewLink && (
-                  <div className="pt-2 border-t border-slate-800 flex justify-between items-center text-xs">
-                    <span className="text-slate-400">Comprobante guardado:</span>
+                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
+                    <span className="text-slate-500">Imagen adjunta</span>
                     <button
                       type="button"
                       onClick={() => {
                         setZoomImageUrl(successData.drive?.webViewLink || previewUrl);
                         setIsZoomOpen(true);
                       }}
-                      className="text-indigo-400 hover:text-indigo-300 underline inline-flex items-center gap-1 cursor-pointer"
+                      className="text-[#124ec7] font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer"
                     >
-                      <Eye className="h-3 w-3" />
-                      <span>Ver imagen con zoom</span>
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>Ver comprobante</span>
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            <div className="space-y-2.5 pt-2">
+            <div className="space-y-2 pt-1">
               <button
                 type="button"
                 onClick={handleNotifyWhatsApp}
-                className="w-full flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 hover:bg-emerald-500 py-3 px-4 text-sm font-bold text-white transition-all shadow-lg shadow-emerald-600/20 cursor-pointer"
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 px-4 text-sm font-semibold text-white transition-colors cursor-pointer"
               >
-                <MessageCircle className="h-5 w-5" />
-                <span>Notificar Cuota por WhatsApp</span>
+                <MessageCircle className="h-4 w-4" />
+                <span>Enviar confirmación por WhatsApp</span>
               </button>
 
               <button
                 type="button"
                 onClick={handleClose}
-                className="w-full rounded-2xl bg-slate-800 hover:bg-slate-700 py-2.5 text-sm font-semibold text-slate-300 transition-colors cursor-pointer"
+                className="w-full rounded-xl bg-slate-100 hover:bg-slate-200/80 py-2.5 text-sm font-semibold text-slate-700 transition-colors cursor-pointer"
               >
-                Cerrar y volver a la rifa
+                Volver al tablero
               </button>
             </div>
           </div>
         ) : (
-          /* View 2: Formulario de Pago y Apartado */
           <div>
             <div className="mb-5">
               <div className="flex items-center gap-2 mb-2">
                 <img
                   src="/icon-calidosa.png"
                   alt="La Calidosa"
-                  className="h-6 w-6 rounded-full bg-white p-0.5 ring-1 ring-amber-400/50 object-contain"
+                  className="h-6 w-6 object-contain"
                 />
-                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300/90">
+                <span className="text-xs font-semibold text-slate-500">
                   Rifa e Inversiones La Calidosa
                 </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2 mb-2">
-                <span className="font-mono text-2xl font-black text-white">
-                  {isMultiPay ? `${activeTickets.length} Boletas Seleccionadas` : `Boleta #${ticket.numero}`}
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="font-mono text-xl sm:text-2xl font-extrabold text-slate-900">
+                  {isMultiPay ? `${activeTickets.length} boletas seleccionadas` : `Boleta #${ticket.numero}`}
                 </span>
-                <span className="font-semibold text-xs bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded-full">
-                  {isMultiPay ? `${activeTickets.length} × $100.000 COP` : `Cuota ${mes} (${nombreMes})`}
+                <span className="font-semibold text-xs bg-blue-50 text-[#124ec7] border border-blue-200 px-2.5 py-0.5 rounded-full">
+                  {isMultiPay ? `${activeTickets.length} × $100.000` : `Cuota ${mes} (${nombreMes})`}
                 </span>
               </div>
-              <h2 className="text-xl font-black text-white">
-                {esApartadoInicial
-                  ? 'Apartar Boleta con Cuota 1'
-                  : isMultiPay
-                  ? `Pago Grupal de ${activeTickets.length} Boletas`
-                  : `Pagar Mensualidad - ${nombreMes}`}
-              </h2>
-              <p className="text-xs text-slate-400 mt-1">
-                Valor total a transferir:{' '}
-                <strong className="text-emerald-400 font-mono text-sm">{totalAmountFormatted}</strong>
+              <p className="text-xs text-slate-600">
+                Valor a transferir:{' '}
+                <strong className="text-emerald-700 font-mono text-sm">{totalAmountFormatted}</strong>
               </p>
+
               {isMultiPay && (
-                <div className="mt-2.5 rounded-xl bg-indigo-950/35 border border-indigo-500/30 p-2.5 text-xs">
-                  <span className="text-slate-400 text-[11px] block mb-1">
-                    Números incluidos en este pago:
-                  </span>
+                <div className="mt-2.5 rounded-xl bg-slate-50 border border-slate-200 p-2.5 text-xs">
+                  <span className="text-slate-500 text-[11px] block mb-1">Números incluidos:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {activeTickets.map((t) => {
                       const tMes = (t.cuotasPagadas || 0) < 12 ? (t.cuotasPagadas || 0) + 1 : 12;
                       return (
                         <span
                           key={t.numero}
-                          className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                          className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-md bg-white text-slate-800 border border-slate-200"
                         >
-                          #{t.numero} (Cuota {tMes})
+                          #{t.numero} (C{tMes})
                         </span>
                       );
                     })}
@@ -525,49 +493,89 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
 
             {errorMessage && (
-              <div className="mb-4 flex items-start gap-2.5 rounded-2xl bg-rose-500/15 p-3.5 text-xs font-medium text-rose-300 border border-rose-500/30">
-                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div className="mb-4 flex items-start gap-2.5 rounded-xl bg-rose-50 p-3.5 text-xs font-medium text-rose-800 border border-rose-200">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-rose-600" />
                 <span>{errorMessage}</span>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Datos de Contacto */}
+              {/* Cuentas Autorizadas */}
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2">
+                <span className="text-xs font-semibold text-slate-700 block">
+                  Cuentas autorizadas para tu transferencia:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank('29700006972', 'bancolombia')}
+                    className="flex items-center justify-between rounded-lg bg-white hover:bg-slate-50 border border-slate-200 px-3 py-2 text-left transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Ahorros Bancolombia</span>
+                      <span className="font-mono font-bold text-slate-900">297 000069 72</span>
+                    </div>
+                    {copiedBank === 'bancolombia' ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleCopyBank('3135982641', 'nequi')}
+                    className="flex items-center justify-between rounded-lg bg-white hover:bg-emerald-50/50 border border-slate-200 px-3 py-2 text-left transition-colors cursor-pointer"
+                  >
+                    <div>
+                      <span className="text-[10px] text-slate-500 block">Nequi Oficial</span>
+                      <span className="font-mono font-bold text-emerald-700">3135982641</span>
+                    </div>
+                    {copiedBank === 'nequi' ? (
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                    ) : (
+                      <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
+              {/* Datos de contacto */}
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-slate-300 mb-1">
-                    Nombre completo del participante <span className="text-rose-400">*</span>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nombre completo del titular <span className="text-rose-600">*</span>
                   </label>
                   <div className="relative">
-                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       type="text"
                       required
                       value={nombre}
                       onChange={(e) => setNombre(e.target.value)}
-                      placeholder="Ej: Andrés Gómez"
-                      className="w-full rounded-2xl bg-slate-800 pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-slate-500 border border-slate-700 focus:outline-none focus:border-indigo-500"
+                      placeholder="Ej. Andrés Gómez"
+                      className="w-full rounded-xl bg-slate-50 pl-10 pr-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 border border-slate-200 focus:bg-white focus:outline-none focus:border-[#124ec7]"
                     />
                   </div>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-medium text-slate-300">
-                      WhatsApp o Celular (10 números) <span className="text-rose-400">*</span>
+                    <label className="text-xs font-semibold text-slate-700">
+                      Celular WhatsApp (10 dígitos) <span className="text-rose-600">*</span>
                     </label>
                     <span
                       className={`text-[10px] font-mono ${
                         whatsapp.length === 10 && whatsapp.startsWith('3')
-                          ? 'text-emerald-400 font-bold'
+                          ? 'text-emerald-700 font-bold'
                           : 'text-slate-400'
                       }`}
                     >
-                      {whatsapp.length}/10 números
+                      {whatsapp.length}/10
                     </span>
                   </div>
                   <div className="relative">
-                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                    <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <input
                       type="tel"
                       inputMode="numeric"
@@ -576,32 +584,26 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       pattern="3[0-9]{9}"
                       value={whatsapp}
                       onChange={(e) => setWhatsapp(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                      placeholder="Ej: 3001234567"
-                      className="w-full rounded-2xl bg-slate-800 pl-10 pr-3.5 py-2.5 text-sm text-white placeholder-slate-500 border border-slate-700 focus:outline-none focus:border-indigo-500 font-mono tracking-wider"
+                      placeholder="Ej. 3001234567"
+                      className="w-full rounded-xl bg-slate-50 pl-10 pr-3.5 py-2.5 text-sm text-slate-900 placeholder-slate-400 border border-slate-200 focus:bg-white focus:outline-none focus:border-[#124ec7] font-mono"
                     />
                   </div>
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Solo números reales de celular (10 dígitos iniciando en 3).
-                  </p>
                 </div>
 
-                {/* CAMPO DE SEGURIDAD: CLAVE ÚNICA HEXADECIMAL (PIN) */}
                 {esApartadoInicial ? (
-                  <div className="rounded-2xl bg-amber-500/10 border border-amber-500/30 p-3.5 space-y-2">
+                  <div className="rounded-xl bg-amber-50/70 border border-amber-200 p-3.5 space-y-2">
                     <div className="flex items-center justify-between">
-                      <label className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                        <Key className="h-3.5 w-3.5 text-amber-400" />
-                        <span>Crea tu Clave Única Hexadecimal (4 cifras)</span>
-                        <span className="text-rose-400">*</span>
+                      <label className="text-xs font-bold text-amber-900 flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5 text-amber-600" />
+                        <span>Tu clave PIN de 4 cifras</span>
                       </label>
                       <button
                         type="button"
                         onClick={() => setPin(generateHexPin())}
-                        className="text-[11px] text-amber-400 hover:text-amber-300 underline inline-flex items-center gap-1 cursor-pointer"
-                        title="Generar otro código al azar"
+                        className="text-[11px] font-semibold text-amber-800 hover:underline inline-flex items-center gap-1 cursor-pointer"
                       >
                         <RefreshCw className="h-3 w-3" />
-                        <span>Generar otro</span>
+                        <span>Cambiar</span>
                       </button>
                     </div>
 
@@ -617,60 +619,48 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         onChange={(e) =>
                           setPin(e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().slice(0, 4))
                         }
-                        placeholder="Ej: 7B2A"
-                        className="w-full text-center tracking-widest font-mono text-xl font-black uppercase rounded-xl bg-slate-900 border border-amber-500/40 px-4 py-2 text-white placeholder-slate-600 focus:outline-none focus:border-amber-400"
+                        placeholder="Ej. 7B2A"
+                        className="w-full text-center tracking-widest font-mono text-xl font-extrabold uppercase rounded-xl bg-white border border-amber-300 px-4 py-2 text-slate-900 focus:outline-none focus:border-amber-500"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPin(!showPin)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
                       >
                         {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-
-                    <p className="text-[11px] text-slate-400 leading-snug">
-                      🔒 Este código hexadecimal protegerá tu boleta todo el año. Lo necesitarás cada mes para hacer tus pagos en Rifas e Inversiones La Calidosa y evitar que personas maliciosas alteren tu número.
-                    </p>
                   </div>
                 ) : initialPin ? (
-                  <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/30 p-3 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2 text-emerald-300 font-bold">
-                      <ShieldCheck className="h-4 w-4 text-emerald-400" />
-                      <span>Clave Única Hexadecimal Validada:</span>
-                      <span className="font-mono bg-emerald-500/20 px-2.5 py-0.5 rounded text-white tracking-widest uppercase">
-                        ••••
-                      </span>
+                  <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2 text-emerald-800 font-semibold">
+                      <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                      <span>Clave PIN verificada</span>
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full">
-                      Autorizado
-                    </span>
+                    <span className="text-[11px] font-semibold text-emerald-700">Autorizado</span>
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-xs font-medium text-slate-300 mb-1">
-                      Clave Única Hexadecimal (PIN de 4 cifras asignado a tu boleta) <span className="text-rose-400">*</span>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      Clave PIN de tu boleta <span className="text-rose-600">*</span>
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" />
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                       <input
                         type={showPin ? 'text' : 'password'}
                         required
                         maxLength={4}
-                        autoCapitalize="characters"
-                        autoCorrect="off"
-                        spellCheck={false}
                         value={pin}
                         onChange={(e) =>
                           setPin(e.target.value.replace(/[^0-9A-Fa-f]/g, '').toUpperCase().slice(0, 4))
                         }
-                        placeholder="Ingresa tu PIN hex (ej: 7B2A)"
-                        className="w-full text-center tracking-widest font-mono text-base font-bold uppercase rounded-2xl bg-slate-800 pl-10 pr-10 py-2.5 text-white placeholder-slate-500 border border-slate-700 focus:outline-none focus:border-amber-400"
+                        placeholder="PIN hex (ej. 7B2A)"
+                        className="w-full text-center tracking-widest font-mono text-base font-bold uppercase rounded-xl bg-slate-50 pl-10 pr-10 py-2.5 text-slate-900 border border-slate-200 focus:bg-white focus:outline-none focus:border-[#124ec7]"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPin(!showPin)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 cursor-pointer"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
                       >
                         {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -679,72 +669,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 )}
               </div>
 
-              {/* Cuentas Autorizadas para Transferencia (Bancolombia y Nequi) */}
-              <div className="rounded-2xl bg-indigo-950/35 border border-indigo-500/35 p-3.5 space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300 block">
-                  Cuentas Autorizadas para Consignación o Transferencia:
-                </span>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => handleCopyPin('29700006972')}
-                    className="flex items-center justify-between rounded-xl bg-slate-900/90 hover:bg-slate-900 border border-slate-700 px-3 py-2 text-left transition-colors cursor-pointer"
-                    title="Copiar cuenta Bancolombia"
-                  >
-                    <div>
-                      <span className="text-[10px] text-slate-400 block">Ahorros Bancolombia</span>
-                      <span className="font-mono font-black text-amber-300">297 000069 72</span>
-                    </div>
-                    <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopyPin('3135982641')}
-                    className="flex items-center justify-between rounded-xl bg-slate-900/90 hover:bg-slate-900 border border-slate-700 px-3 py-2 text-left transition-colors cursor-pointer"
-                    title="Copiar número Nequi"
-                  >
-                    <div>
-                      <span className="text-[10px] text-slate-400 block">Nequi Oficial</span>
-                      <span className="font-mono font-black text-emerald-300">3135982641</span>
-                    </div>
-                    <Copy className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Selección del Valor a Pagar (Primera opción: $100.000 COP por boleta, Segunda opción: Otro valor) */}
-              <div className="rounded-2xl bg-slate-800/60 border border-slate-700/80 p-3.5 space-y-2.5">
-                <label className="block text-xs font-bold text-slate-200">
-                  Valor a pagar en este comprobante <span className="text-rose-400">*</span>
+              {/* Selector de Valor: Primera opción $100.000 COP, Segunda opción Otro valor */}
+              <div className="rounded-xl bg-slate-50 border border-slate-200 p-3.5 space-y-2.5">
+                <label className="block text-xs font-semibold text-slate-700">
+                  Valor de este comprobante <span className="text-rose-600">*</span>
                 </label>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {/* Primera opción por defecto: $100.000 COP (o total de boletas x $100.000) */}
                   <button
                     type="button"
                     onClick={() => {
                       setPaymentMode('full');
                       setErrorMessage(null);
                     }}
-                    className={`flex flex-col items-start justify-center p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`flex flex-col items-start justify-center p-3 rounded-xl border text-left transition-colors cursor-pointer ${
                       paymentMode === 'full'
-                        ? 'bg-emerald-500/20 border-emerald-400 text-white ring-1 ring-emerald-400/50 shadow-md'
-                        : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600'
+                        ? 'bg-white border-2 border-emerald-600 text-slate-900 shadow-2xs'
+                        : 'bg-white/70 border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-300">
-                        {isMultiPay ? `Total (${activeTickets.length} boletas)` : 'Cuota Completa'}
+                      <span className="text-[11px] font-semibold text-emerald-700">
+                        {isMultiPay ? `Total (${activeTickets.length} boletas)` : 'Cuota completa'}
                       </span>
-                      {paymentMode === 'full' && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />}
+                      {paymentMode === 'full' && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />}
                     </div>
-                    <span className="font-mono text-base font-black text-white mt-0.5">
+                    <span className="font-mono text-base font-extrabold text-slate-900 mt-0.5">
                       {standardTotalFormatted}
                     </span>
                   </button>
 
-                  {/* Segunda opción: Otro valor personalizado */}
                   <button
                     type="button"
                     onClick={() => {
@@ -752,59 +706,54 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       if (!customAmountStr) setCustomAmountStr('50000');
                       setErrorMessage(null);
                     }}
-                    className={`flex flex-col items-start justify-center p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                    className={`flex flex-col items-start justify-center p-3 rounded-xl border text-left transition-colors cursor-pointer ${
                       paymentMode === 'custom'
-                        ? 'bg-amber-500/20 border-amber-400 text-white ring-1 ring-amber-400/50 shadow-md'
-                        : 'bg-slate-900/80 border-slate-700 text-slate-300 hover:border-slate-600'
+                        ? 'bg-white border-2 border-[#124ec7] text-slate-900 shadow-2xs'
+                        : 'bg-white/70 border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-amber-300">
-                        Otro Valor / Abono
+                      <span className="text-[11px] font-semibold text-[#124ec7]">
+                        Otro valor / Abono
                       </span>
-                      {paymentMode === 'custom' && <CheckCircle2 className="h-4 w-4 text-amber-400 shrink-0" />}
+                      {paymentMode === 'custom' && <CheckCircle2 className="h-4 w-4 text-[#124ec7] shrink-0" />}
                     </div>
-                    <span className="text-xs font-semibold text-slate-300 mt-0.5">
-                      Escribir monto diferente
+                    <span className="text-xs font-medium text-slate-600 mt-0.5">
+                      Ingresar otro monto
                     </span>
                   </button>
                 </div>
 
                 {paymentMode === 'custom' && (
-                  <div className="pt-1 space-y-2 animate-in fade-in duration-150">
+                  <div className="pt-1 space-y-2">
                     <div className="relative">
-                      <Coins className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-400" />
+                      <Coins className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#124ec7]" />
                       <input
                         type="text"
                         inputMode="numeric"
                         required
-                        value={
-                          parsedCustomAmount > 0
-                            ? parsedCustomAmount.toLocaleString('es-CO')
-                            : ''
-                        }
+                        value={parsedCustomAmount > 0 ? parsedCustomAmount.toLocaleString('es-CO') : ''}
                         onChange={(e) => {
                           const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
                           setCustomAmountStr(digits);
                         }}
-                        placeholder="Ej: 50.000"
-                        className="w-full rounded-xl bg-slate-900 pl-10 pr-16 py-2.5 text-sm font-mono font-bold text-amber-300 placeholder-slate-500 border border-amber-500/50 focus:outline-none focus:border-amber-400"
+                        placeholder="Ej. 50.000"
+                        className="w-full rounded-xl bg-white pl-10 pr-14 py-2.5 text-sm font-mono font-bold text-slate-900 placeholder-slate-400 border border-[#124ec7] focus:outline-none"
                       />
-                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-slate-400">
+                      <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono font-semibold text-slate-400">
                         COP
                       </span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-[10px] text-slate-400 mr-1">Valores rápidos:</span>
                       {[50000, 60000, 75000, 150000, 200000].map((val) => (
                         <button
                           key={val}
                           type="button"
                           onClick={() => setCustomAmountStr(val.toString())}
-                          className={`px-2 py-0.5 rounded-lg font-mono text-[11px] font-bold border transition-colors cursor-pointer ${
+                          className={`px-2.5 py-0.5 rounded-md font-mono text-[11px] font-semibold border transition-colors cursor-pointer ${
                             parsedCustomAmount === val
-                              ? 'bg-amber-500/25 text-amber-200 border-amber-400/50'
-                              : 'bg-slate-900 text-slate-400 border-slate-700 hover:text-white'
+                              ? 'bg-[#124ec7] text-white border-[#124ec7]'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
                           }`}
                         >
                           ${val.toLocaleString('es-CO')}
@@ -815,10 +764,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 )}
               </div>
 
-              {/* Subida del Comprobante */}
+              {/* Imagen del comprobante */}
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Comprobante de Pago de {totalAmountFormatted} (JPG o PNG) <span className="text-rose-400">*</span>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Foto o captura del comprobante ({totalAmountFormatted}) <span className="text-rose-600">*</span>
                 </label>
 
                 <input
@@ -830,7 +779,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 />
 
                 {previewUrl && file ? (
-                  <div className="relative rounded-2xl bg-slate-800/80 border border-slate-700 p-3 flex items-center justify-between gap-3">
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 p-3 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
                       <button
                         type="button"
@@ -838,41 +787,28 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           setZoomImageUrl(previewUrl);
                           setIsZoomOpen(true);
                         }}
-                        title="Hacer clic para ampliar con zoom"
-                        className="relative group h-12 w-12 rounded-xl overflow-hidden border border-slate-700 shrink-0 cursor-pointer"
+                        className="relative group h-12 w-12 rounded-lg overflow-hidden border border-slate-200 shrink-0 cursor-pointer"
                       >
-                        <img
-                          src={previewUrl}
-                          alt="Comprobante"
-                          className="h-full w-full object-cover group-hover:scale-110 transition-transform"
-                        />
-                        <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                          <Eye className="h-4 w-4 text-white" />
-                        </div>
+                        <img src={previewUrl} alt="Comprobante" className="h-full w-full object-cover" />
                       </button>
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-white truncate">{file.name}</p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-[11px] text-slate-400">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setZoomImageUrl(previewUrl);
-                              setIsZoomOpen(true);
-                            }}
-                            className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 underline cursor-pointer"
-                          >
-                            Ver con zoom
-                          </button>
-                        </div>
+                        <p className="text-xs font-semibold text-slate-900 truncate">{file.name}</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setZoomImageUrl(previewUrl);
+                            setIsZoomOpen(true);
+                          }}
+                          className="text-[11px] font-semibold text-[#124ec7] hover:underline cursor-pointer"
+                        >
+                          Ampliar imagen
+                        </button>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={handleRemoveFile}
-                      className="rounded-lg p-2 text-slate-400 hover:text-rose-400 transition-colors cursor-pointer"
+                      className="rounded-lg p-2 text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -880,39 +816,38 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="group cursor-pointer rounded-2xl border-2 border-dashed border-slate-700 hover:border-emerald-500/60 bg-slate-800/40 hover:bg-slate-800/70 p-5 text-center transition-all"
+                    className="group cursor-pointer rounded-xl border-2 border-dashed border-slate-300 hover:border-[#124ec7] bg-slate-50/70 hover:bg-blue-50/30 p-5 text-center transition-colors"
                   >
-                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 text-slate-400 group-hover:text-emerald-400 group-hover:bg-emerald-500/10 transition-colors mb-2">
+                    <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-white border border-slate-200 text-slate-500 group-hover:text-[#124ec7] mb-2">
                       <UploadCloud className="h-5 w-5" />
                     </div>
-                    <p className="text-xs font-semibold text-slate-200">
-                      Sube la captura de la transferencia por {totalAmountFormatted}
+                    <p className="text-xs font-semibold text-slate-800">
+                      Toca aquí para adjuntar la captura por {totalAmountFormatted}
                     </p>
                     <p className="text-[11px] text-slate-500 mt-0.5">
-                      Gemini validará la fecha, hora y número de referencia
+                      Formatos aceptados: JPG, PNG o WebP
                     </p>
                   </div>
                 )}
               </div>
 
-              {/* Botón de envío */}
-              <div className="pt-2">
+              <div className="pt-1">
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 disabled:opacity-50 py-3.5 px-4 text-sm font-bold text-slate-950 transition-all shadow-xl shadow-emerald-500/20 cursor-pointer disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 py-3.5 px-4 text-sm font-semibold text-white transition-colors shadow-xs cursor-pointer disabled:cursor-not-allowed"
                 >
                   {isSubmitting ? (
                     <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />
-                      <span>{loadingStep || 'Procesando cuota...'}</span>
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      <span>{loadingStep || 'Registrando pago...'}</span>
                     </>
                   ) : (
                     <>
                       <span>
                         {isMultiPay
-                          ? `Enviar Comprobante de ${activeTickets.length} Boletas (${totalAmountFormatted})`
-                          : `Enviar Comprobante de Cuota (${totalAmountFormatted})`}
+                          ? `Registrar pago de ${activeTickets.length} boletas (${totalAmountFormatted})`
+                          : `Registrar comprobante (${totalAmountFormatted})`}
                       </span>
                       <ArrowRight className="h-4 w-4" />
                     </>
@@ -924,7 +859,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         )}
       </div>
 
-      {/* Modal visor de zoom para el comprobante */}
       <ReceiptZoomModal
         isOpen={isZoomOpen}
         onClose={() => setIsZoomOpen(false)}
@@ -934,7 +868,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           numero: ticket?.numero,
           mes,
           nombreMes: MESES_NOMBRES[mes - 1],
-          nombre: nombre,
+          nombre,
           telefono: whatsapp,
         }}
       />
